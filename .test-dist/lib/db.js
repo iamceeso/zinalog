@@ -65,8 +65,7 @@ const path_1 = __importDefault(require("path"));
 const crypto_1 = require("crypto");
 const sqlite3_1 = __importDefault(require("sqlite3"));
 const sqlite_1 = require("sqlite");
-const DB_PATH = process.env.DATABASE_PATH ||
-    path_1.default.join(process.cwd(), "data", "logs.db");
+const DB_PATH = process.env.DATABASE_PATH || path_1.default.join(process.cwd(), "data", "logs.db");
 const dbDir = path_1.default.dirname(DB_PATH);
 if (!fs_1.default.existsSync(dbDir)) {
     fs_1.default.mkdirSync(dbDir, { recursive: true });
@@ -372,7 +371,8 @@ function parseAllowedServices(rawValue, context) {
     catch {
         throw new Error(`Invalid allowed services JSON for ${context}`);
     }
-    if (!Array.isArray(parsed) || parsed.some((value) => typeof value !== "string")) {
+    if (!Array.isArray(parsed) ||
+        parsed.some((value) => typeof value !== "string")) {
         throw new Error(`Invalid allowed services value for ${context}`);
     }
     return normalizeAllowedServices(parsed) ?? [];
@@ -462,19 +462,17 @@ async function queryLogs(filters = {}, allowedServices = null) {
 async function insertLog(data) {
     const database = await getDb();
     const maxLogs = await getMaxLogsLimitFromDb(database);
-    return withTransaction(database, async () => {
-        const result = await database.run(`INSERT INTO logs (level, message, service, stack, metadata, api_key_id)
+    const result = await database.run(`INSERT INTO logs (level, message, service, stack, metadata, api_key_id)
        VALUES (?, ?, ?, ?, ?, ?)`, [
-            data.level,
-            data.message,
-            data.service ?? null,
-            data.stack ?? null,
-            data.metadata ?? null,
-            data.api_key_id ?? null,
-        ]);
-        await trimLogsToMaxWithDb(database, maxLogs);
-        return result.lastID;
-    });
+        data.level,
+        data.message,
+        data.service ?? null,
+        data.stack ?? null,
+        data.metadata ?? null,
+        data.api_key_id ?? null,
+    ]);
+    await trimLogsToMaxWithDb(database, maxLogs);
+    return result.lastID;
 }
 async function trimLogsToMax(maxLogs) {
     return trimLogsToMaxWithDb(await getDb(), maxLogs);
@@ -486,7 +484,9 @@ async function getStats(allowedServices = null) {
     const baseConditions = [];
     const baseParams = [];
     addAllowedServicesCondition(baseConditions, baseParams, allowedServices);
-    const baseWhere = baseConditions.length ? `WHERE ${baseConditions.join(" AND ")}` : "";
+    const baseWhere = baseConditions.length
+        ? `WHERE ${baseConditions.join(" AND ")}`
+        : "";
     const todayConditions = [...baseConditions, "created_at >= ?"];
     const todayParams = [...baseParams, dayAgo];
     const todayWhere = `WHERE ${todayConditions.join(" AND ")}`;
@@ -495,7 +495,10 @@ async function getStats(allowedServices = null) {
     const recentConditions = [...baseConditions, "level = 'error'"];
     const recentParams = [...baseParams];
     const recentWhere = `WHERE ${recentConditions.join(" AND ")}`;
-    const hourlyConditions = [...baseConditions, "created_at >= datetime('now', '-24 hours')"];
+    const hourlyConditions = [
+        ...baseConditions,
+        "created_at >= datetime('now', '-24 hours')",
+    ];
     const hourlyParams = [...baseParams];
     const hourlyWhere = `WHERE ${hourlyConditions.join(" AND ")}`;
     const total = (await database.get(`SELECT COUNT(*) as c FROM logs ${baseWhere}`, baseParams))?.c ?? 0;
@@ -703,7 +706,7 @@ async function exportLogs(filters = {}, allowedServices = null) {
 }
 async function countUsers() {
     const database = await getDb();
-    return (await database.get("SELECT COUNT(*) as c FROM users"))?.c ?? 0;
+    return ((await database.get("SELECT COUNT(*) as c FROM users"))?.c ?? 0);
 }
 async function countActiveAdmins() {
     const database = await getDb();
@@ -716,9 +719,7 @@ async function countAdmins() {
 async function getUserByUsername(username) {
     const database = await getDb();
     await ensureUsersAllowedServicesColumn(database);
-    const row = (await database.get("SELECT * FROM users WHERE username = ?", [
-        username,
-    ]));
+    const row = (await database.get("SELECT * FROM users WHERE username = ?", [username]));
     return row ? mapUser(row) : null;
 }
 async function getUserByEmail(email) {
@@ -730,7 +731,9 @@ async function getUserByEmail(email) {
 async function getUserById(id) {
     const database = await getDb();
     await ensureUsersAllowedServicesColumn(database);
-    const row = (await database.get("SELECT * FROM users WHERE id = ?", [id]));
+    const row = (await database.get("SELECT * FROM users WHERE id = ?", [
+        id,
+    ]));
     return row ? mapUser(row) : null;
 }
 async function listUsers() {
@@ -769,7 +772,10 @@ async function createUser(data) {
 }
 async function updateUserRole(id, role) {
     const database = await getDb();
-    const result = await database.run("UPDATE users SET role = ? WHERE id = ?", [role, id]);
+    const result = await database.run("UPDATE users SET role = ? WHERE id = ?", [
+        role,
+        id,
+    ]);
     return (result.changes ?? 0) > 0;
 }
 async function updateUserPassword(id, passwordHash, options) {
@@ -788,32 +794,26 @@ async function updateUserPassword(id, passwordHash, options) {
 }
 async function updateUserEmail(id, email) {
     const database = await getDb();
-    const result = await database.run("UPDATE users SET email = ? WHERE id = ?", [email, id]);
+    const result = await database.run("UPDATE users SET email = ? WHERE id = ?", [
+        email,
+        id,
+    ]);
     return (result.changes ?? 0) > 0;
 }
 async function updateUserAllowedServices(id, allowedServices) {
     const database = await getDb();
     await ensureUsersAllowedServicesColumn(database);
-    const result = await database.run("UPDATE users SET allowed_services = ? WHERE id = ?", [
-        serializeAllowedServices(allowedServices),
-        id,
-    ]);
+    const result = await database.run("UPDATE users SET allowed_services = ? WHERE id = ?", [serializeAllowedServices(allowedServices), id]);
     return (result.changes ?? 0) > 0;
 }
 async function updateUserMfaEnabled(id, enabled) {
     const database = await getDb();
-    const result = await database.run("UPDATE users SET mfa_enabled = ? WHERE id = ?", [
-        enabled ? 1 : 0,
-        id,
-    ]);
+    const result = await database.run("UPDATE users SET mfa_enabled = ? WHERE id = ?", [enabled ? 1 : 0, id]);
     return (result.changes ?? 0) > 0;
 }
 async function setUserActive(id, isActive) {
     const database = await getDb();
-    const result = await database.run("UPDATE users SET is_active = ? WHERE id = ?", [
-        isActive ? 1 : 0,
-        id,
-    ]);
+    const result = await database.run("UPDATE users SET is_active = ? WHERE id = ?", [isActive ? 1 : 0, id]);
     return (result.changes ?? 0) > 0;
 }
 async function touchUserLogin(id) {
@@ -873,9 +873,7 @@ async function getAuthChallengeByTokenHash(tokenHash, purpose) {
 }
 async function deleteAuthChallenge(tokenHash) {
     const database = await getDb();
-    const result = await database.run("DELETE FROM auth_challenges WHERE token_hash = ?", [
-        tokenHash,
-    ]);
+    const result = await database.run("DELETE FROM auth_challenges WHERE token_hash = ?", [tokenHash]);
     return (result.changes ?? 0) > 0;
 }
 async function deleteAuthChallengesForUser(userId) {
@@ -890,9 +888,7 @@ async function cleanupExpiredAuthChallenges() {
 }
 async function deleteAuthSession(tokenHash) {
     const database = await getDb();
-    const result = await database.run("DELETE FROM auth_sessions WHERE token_hash = ?", [
-        tokenHash,
-    ]);
+    const result = await database.run("DELETE FROM auth_sessions WHERE token_hash = ?", [tokenHash]);
     return (result.changes ?? 0) > 0;
 }
 async function deleteAuthSessionsForUser(userId) {

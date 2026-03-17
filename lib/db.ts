@@ -5,8 +5,7 @@ import sqlite3 from "sqlite3";
 import { open, type Database as SqliteDatabase } from "sqlite";
 
 const DB_PATH =
-  process.env.DATABASE_PATH ||
-  path.join(process.cwd(), "data", "logs.db");
+  process.env.DATABASE_PATH || path.join(process.cwd(), "data", "logs.db");
 
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
@@ -52,7 +51,7 @@ function verifyApiKeyHash(rawKey: string, storedHash: string): boolean {
 
 async function withTransaction<T>(
   database: SqliteDatabase,
-  action: () => Promise<T>
+  action: () => Promise<T>,
 ): Promise<T> {
   await database.exec("BEGIN IMMEDIATE");
 
@@ -68,7 +67,7 @@ async function withTransaction<T>(
 
 async function migrateApiKeysTable(database: SqliteDatabase): Promise<void> {
   const columns = (await database.all<{ name: string }[]>(
-    "PRAGMA table_info(api_keys)"
+    "PRAGMA table_info(api_keys)",
   )) as { name: string }[];
 
   const hasLegacyKey = columns.some((column) => column.name === "key");
@@ -80,9 +79,7 @@ async function migrateApiKeysTable(database: SqliteDatabase): Promise<void> {
     return;
   }
 
-  const legacyRows = (await database.all(
-    "SELECT * FROM api_keys"
-  )) as Array<{
+  const legacyRows = (await database.all("SELECT * FROM api_keys")) as Array<{
     id: number;
     name: string;
     key?: string | null;
@@ -124,7 +121,9 @@ async function migrateApiKeysTable(database: SqliteDatabase): Promise<void> {
 
       if (!keyLookup || !keyHash) {
         if (!row.key) {
-          throw new Error(`Unable to migrate API key row ${row.id}: missing legacy key value`);
+          throw new Error(
+            `Unable to migrate API key row ${row.id}: missing legacy key value`,
+          );
         }
 
         keyLookup = createApiKeyLookup(row.key);
@@ -149,7 +148,7 @@ async function migrateApiKeysTable(database: SqliteDatabase): Promise<void> {
           row.expires_at ?? null,
           row.last_used_at ?? null,
           row.usage_count,
-        ]
+        ],
       );
     }
 
@@ -159,7 +158,7 @@ async function migrateApiKeysTable(database: SqliteDatabase): Promise<void> {
 
 async function migrateUsersTable(database: SqliteDatabase): Promise<void> {
   const columns = (await database.all<{ name: string }[]>(
-    "PRAGMA table_info(users)"
+    "PRAGMA table_info(users)",
   )) as { name: string }[];
 
   const columnNames = new Set(columns.map((column) => column.name));
@@ -167,15 +166,19 @@ async function migrateUsersTable(database: SqliteDatabase): Promise<void> {
     await database.exec("ALTER TABLE users ADD COLUMN email TEXT");
   }
   if (!columnNames.has("mfa_enabled")) {
-    await database.exec("ALTER TABLE users ADD COLUMN mfa_enabled INTEGER DEFAULT 0");
+    await database.exec(
+      "ALTER TABLE users ADD COLUMN mfa_enabled INTEGER DEFAULT 0",
+    );
   }
   if (!columnNames.has("password_is_temporary")) {
     await database.exec(
-      "ALTER TABLE users ADD COLUMN password_is_temporary INTEGER DEFAULT 0"
+      "ALTER TABLE users ADD COLUMN password_is_temporary INTEGER DEFAULT 0",
     );
   }
   if (!columnNames.has("password_expires_at")) {
-    await database.exec("ALTER TABLE users ADD COLUMN password_expires_at DATETIME");
+    await database.exec(
+      "ALTER TABLE users ADD COLUMN password_expires_at DATETIME",
+    );
   }
   if (!columnNames.has("allowed_services")) {
     await database.exec("ALTER TABLE users ADD COLUMN allowed_services TEXT");
@@ -188,9 +191,11 @@ async function migrateUsersTable(database: SqliteDatabase): Promise<void> {
   `);
 }
 
-async function ensureUsersAllowedServicesColumn(database: SqliteDatabase): Promise<void> {
+async function ensureUsersAllowedServicesColumn(
+  database: SqliteDatabase,
+): Promise<void> {
   const columns = (await database.all<{ name: string }[]>(
-    "PRAGMA table_info(users)"
+    "PRAGMA table_info(users)",
   )) as { name: string }[];
 
   if (!columns.some((column) => column.name === "allowed_services")) {
@@ -343,7 +348,7 @@ async function createDb(): Promise<SqliteDatabase> {
   for (const [key, value] of defaults) {
     await database.run(
       "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
-      [key, value]
+      [key, value],
     );
   }
 
@@ -482,7 +487,7 @@ interface UserSummaryRow extends Omit<UserSummary, "allowed_services"> {
 }
 
 function normalizeAllowedServices(
-  allowedServices: readonly string[] | null | undefined
+  allowedServices: readonly string[] | null | undefined,
 ): string[] | null {
   if (allowedServices === undefined || allowedServices === null) {
     return null;
@@ -492,13 +497,13 @@ function normalizeAllowedServices(
     new Set(
       allowedServices
         .map((service) => service.trim())
-        .filter((service) => service.length > 0)
-    )
+        .filter((service) => service.length > 0),
+    ),
   ).sort((left, right) => left.localeCompare(right));
 }
 
 function serializeAllowedServices(
-  allowedServices: readonly string[] | null | undefined
+  allowedServices: readonly string[] | null | undefined,
 ): string | null {
   const normalized = normalizeAllowedServices(allowedServices);
   return normalized === null ? null : JSON.stringify(normalized);
@@ -506,7 +511,7 @@ function serializeAllowedServices(
 
 function parseAllowedServices(
   rawValue: string | null | undefined,
-  context: string
+  context: string,
 ): string[] | null {
   if (rawValue === undefined || rawValue === null) {
     return null;
@@ -519,7 +524,10 @@ function parseAllowedServices(
     throw new Error(`Invalid allowed services JSON for ${context}`);
   }
 
-  if (!Array.isArray(parsed) || parsed.some((value) => typeof value !== "string")) {
+  if (
+    !Array.isArray(parsed) ||
+    parsed.some((value) => typeof value !== "string")
+  ) {
     throw new Error(`Invalid allowed services value for ${context}`);
   }
 
@@ -529,21 +537,27 @@ function parseAllowedServices(
 function mapUser(row: UserRow): User {
   return {
     ...row,
-    allowed_services: parseAllowedServices(row.allowed_services, `user ${row.id}`),
+    allowed_services: parseAllowedServices(
+      row.allowed_services,
+      `user ${row.id}`,
+    ),
   };
 }
 
 function mapUserSummary(row: UserSummaryRow): UserSummary {
   return {
     ...row,
-    allowed_services: parseAllowedServices(row.allowed_services, `user ${row.id}`),
+    allowed_services: parseAllowedServices(
+      row.allowed_services,
+      `user ${row.id}`,
+    ),
   };
 }
 
 function addAllowedServicesCondition(
   conditions: string[],
   params: unknown[],
-  allowedServices: readonly string[] | null | undefined
+  allowedServices: readonly string[] | null | undefined,
 ): void {
   const normalized = normalizeAllowedServices(allowedServices);
 
@@ -560,16 +574,21 @@ function addAllowedServicesCondition(
   params.push(...normalized);
 }
 
-async function getSettingFromDb(database: SqliteDatabase, key: string): Promise<string | null> {
+async function getSettingFromDb(
+  database: SqliteDatabase,
+  key: string,
+): Promise<string | null> {
   const row = (await database.get<{ value: string }>(
     "SELECT value FROM settings WHERE key = ?",
-    [key]
+    [key],
   )) as { value: string } | undefined;
 
   return row?.value ?? null;
 }
 
-async function getMaxLogsLimitFromDb(database: SqliteDatabase): Promise<number> {
+async function getMaxLogsLimitFromDb(
+  database: SqliteDatabase,
+): Promise<number> {
   const rawValue = await getSettingFromDb(database, "max_logs");
   const parsedValue = Number.parseInt(rawValue ?? "", 10);
 
@@ -580,7 +599,10 @@ async function getMaxLogsLimitFromDb(database: SqliteDatabase): Promise<number> 
   return Math.floor(parsedValue);
 }
 
-async function trimLogsToMaxWithDb(database: SqliteDatabase, maxLogs: number): Promise<number> {
+async function trimLogsToMaxWithDb(
+  database: SqliteDatabase,
+  maxLogs: number,
+): Promise<number> {
   const safeMaxLogs = Math.floor(maxLogs);
   if (!Number.isFinite(safeMaxLogs) || safeMaxLogs < 1) {
     throw new Error(`Invalid max_logs value: ${maxLogs}`);
@@ -594,7 +616,7 @@ async function trimLogsToMaxWithDb(database: SqliteDatabase, maxLogs: number): P
        ORDER BY created_at DESC, id DESC
        LIMIT -1 OFFSET ?
      )`,
-    [safeMaxLogs]
+    [safeMaxLogs],
   );
 
   return result.changes ?? 0;
@@ -602,7 +624,7 @@ async function trimLogsToMaxWithDb(database: SqliteDatabase, maxLogs: number): P
 
 export async function queryLogs(
   filters: LogFilters = {},
-  allowedServices: string[] | null = null
+  allowedServices: string[] | null = null,
 ): Promise<{
   logs: Log[];
   total: number;
@@ -639,12 +661,12 @@ export async function queryLogs(
 
   const logs = (await database.all<Log[]>(
     `SELECT * FROM logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+    [...params, limit, offset],
   )) as Log[];
 
   const row = (await database.get<{ total: number }>(
     `SELECT COUNT(*) as total FROM logs ${where}`,
-    params
+    params,
   )) as { total: number } | undefined;
 
   return { logs, total: row?.total ?? 0 };
@@ -661,23 +683,21 @@ export async function insertLog(data: {
   const database = await getDb();
   const maxLogs = await getMaxLogsLimitFromDb(database);
 
-  return withTransaction(database, async () => {
-    const result = await database.run(
-      `INSERT INTO logs (level, message, service, stack, metadata, api_key_id)
+  const result = await database.run(
+    `INSERT INTO logs (level, message, service, stack, metadata, api_key_id)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        data.level,
-        data.message,
-        data.service ?? null,
-        data.stack ?? null,
-        data.metadata ?? null,
-        data.api_key_id ?? null,
-      ]
-    );
+    [
+      data.level,
+      data.message,
+      data.service ?? null,
+      data.stack ?? null,
+      data.metadata ?? null,
+      data.api_key_id ?? null,
+    ],
+  );
 
-    await trimLogsToMaxWithDb(database, maxLogs);
-    return result.lastID as number;
-  });
+  await trimLogsToMaxWithDb(database, maxLogs);
+  return result.lastID as number;
 }
 
 export async function trimLogsToMax(maxLogs: number): Promise<number> {
@@ -691,7 +711,9 @@ export async function getStats(allowedServices: string[] | null = null) {
   const baseConditions: string[] = [];
   const baseParams: unknown[] = [];
   addAllowedServicesCondition(baseConditions, baseParams, allowedServices);
-  const baseWhere = baseConditions.length ? `WHERE ${baseConditions.join(" AND ")}` : "";
+  const baseWhere = baseConditions.length
+    ? `WHERE ${baseConditions.join(" AND ")}`
+    : "";
 
   const todayConditions = [...baseConditions, "created_at >= ?"];
   const todayParams = [...baseParams, dayAgo];
@@ -704,28 +726,40 @@ export async function getStats(allowedServices: string[] | null = null) {
   const recentParams = [...baseParams];
   const recentWhere = `WHERE ${recentConditions.join(" AND ")}`;
 
-  const hourlyConditions = [...baseConditions, "created_at >= datetime('now', '-24 hours')"];
+  const hourlyConditions = [
+    ...baseConditions,
+    "created_at >= datetime('now', '-24 hours')",
+  ];
   const hourlyParams = [...baseParams];
   const hourlyWhere = `WHERE ${hourlyConditions.join(" AND ")}`;
 
-  const total = ((await database.get<{ c: number }>(
-    `SELECT COUNT(*) as c FROM logs ${baseWhere}`,
-    baseParams
-  )) as { c: number } | undefined)?.c ?? 0;
+  const total =
+    (
+      (await database.get<{ c: number }>(
+        `SELECT COUNT(*) as c FROM logs ${baseWhere}`,
+        baseParams,
+      )) as { c: number } | undefined
+    )?.c ?? 0;
 
-  const totalToday = ((await database.get<{ c: number }>(
-    `SELECT COUNT(*) as c FROM logs ${todayWhere}`,
-    todayParams
-  )) as { c: number } | undefined)?.c ?? 0;
+  const totalToday =
+    (
+      (await database.get<{ c: number }>(
+        `SELECT COUNT(*) as c FROM logs ${todayWhere}`,
+        todayParams,
+      )) as { c: number } | undefined
+    )?.c ?? 0;
 
-  const errorsToday = ((await database.get<{ c: number }>(
-    `SELECT COUNT(*) as c FROM logs ${errorsTodayWhere}`,
-    todayParams
-  )) as { c: number } | undefined)?.c ?? 0;
+  const errorsToday =
+    (
+      (await database.get<{ c: number }>(
+        `SELECT COUNT(*) as c FROM logs ${errorsTodayWhere}`,
+        todayParams,
+      )) as { c: number } | undefined
+    )?.c ?? 0;
 
   const byLevel = (await database.all<{ level: string; count: number }[]>(
     `SELECT level, COUNT(*) as count FROM logs ${todayWhere} GROUP BY level`,
-    todayParams
+    todayParams,
   )) as { level: string; count: number }[];
 
   const byService = (await database.all<{ service: string; count: number }[]>(
@@ -735,19 +769,22 @@ export async function getStats(allowedServices: string[] | null = null) {
      GROUP BY service
      ORDER BY count DESC
      LIMIT 10`,
-    baseParams
+    baseParams,
   )) as { service: string; count: number }[];
 
-  const services = ((await database.get<{ c: number }>(
-    `SELECT COUNT(DISTINCT service) as c
+  const services =
+    (
+      (await database.get<{ c: number }>(
+        `SELECT COUNT(DISTINCT service) as c
      FROM logs
      ${baseWhere ? `${baseWhere} AND service IS NOT NULL` : "WHERE service IS NOT NULL"}`,
-    baseParams
-  )) as { c: number } | undefined)?.c ?? 0;
+        baseParams,
+      )) as { c: number } | undefined
+    )?.c ?? 0;
 
   const recentErrors = (await database.all<Log[]>(
     `SELECT * FROM logs ${recentWhere} ORDER BY created_at DESC LIMIT 5`,
-    recentParams
+    recentParams,
   )) as Log[];
 
   const hourlyActivity = (await database.all<{ hour: string; count: number }[]>(
@@ -756,16 +793,18 @@ export async function getStats(allowedServices: string[] | null = null) {
      ${hourlyWhere}
      GROUP BY hour
      ORDER BY hour ASC`,
-    hourlyParams
+    hourlyParams,
   )) as { hour: string; count: number }[];
 
-  const hourlyByLevel = (await database.all<{ hour: string; level: string; count: number }[]>(
+  const hourlyByLevel = (await database.all<
+    { hour: string; level: string; count: number }[]
+  >(
     `SELECT strftime('%Y-%m-%dT%H:00:00', created_at) as hour, level, COUNT(*) as count
      FROM logs
      ${hourlyWhere}
      GROUP BY hour, level
      ORDER BY hour ASC`,
-    hourlyParams
+    hourlyParams,
   )) as { hour: string; level: string; count: number }[];
 
   return {
@@ -781,7 +820,9 @@ export async function getStats(allowedServices: string[] | null = null) {
   };
 }
 
-export async function getServices(allowedServices: string[] | null = null): Promise<string[]> {
+export async function getServices(
+  allowedServices: string[] | null = null,
+): Promise<string[]> {
   const database = await getDb();
   const conditions = ["service IS NOT NULL"];
   const params: unknown[] = [];
@@ -791,13 +832,16 @@ export async function getServices(allowedServices: string[] | null = null): Prom
      FROM logs
      WHERE ${conditions.join(" AND ")}
      ORDER BY service`,
-    params
+    params,
   )) as { service: string }[];
 
   return rows.map((row) => row.service);
 }
 
-export async function getLogGroups(level: string, allowedServices: string[] | null = null) {
+export async function getLogGroups(
+  level: string,
+  allowedServices: string[] | null = null,
+) {
   const database = await getDb();
   const conditions = ["level = ?"];
   const params: unknown[] = [level];
@@ -813,7 +857,7 @@ export async function getLogGroups(level: string, allowedServices: string[] | nu
      GROUP BY message, service
      ORDER BY count DESC
      LIMIT 100`,
-    params
+    params,
   )) as {
     message: string;
     service: string | null;
@@ -841,7 +885,7 @@ export async function getErrorGroups(allowedServices: string[] | null = null) {
      GROUP BY message, service
      ORDER BY count DESC
      LIMIT 100`,
-    params
+    params,
   )) as {
     message: string;
     service: string | null;
@@ -859,7 +903,7 @@ export async function getApiKey(key: string): Promise<ApiKey | null> {
   const apiKey =
     ((await database.get<ApiKey>(
       "SELECT * FROM api_keys WHERE key_lookup = ? AND is_active = 1",
-      [keyLookup]
+      [keyLookup],
     )) as ApiKey | undefined) ?? null;
 
   if (!apiKey || !verifyApiKeyHash(key, apiKey.key_hash)) {
@@ -874,7 +918,7 @@ export async function listApiKeys(): Promise<ApiKeySummary[]> {
   return (await database.all<ApiKeySummary[]>(
     `SELECT id, name, service, allowed_ips, rate_limit, is_active, created_at, expires_at, last_used_at, usage_count
      FROM api_keys
-     ORDER BY created_at DESC`
+     ORDER BY created_at DESC`,
   )) as ApiKeySummary[];
 }
 
@@ -900,14 +944,14 @@ export async function createApiKey(data: {
       data.allowed_ips ?? null,
       data.rate_limit ?? 1000,
       data.expires_at ?? null,
-    ]
+    ],
   );
 
   const created = (await database.get<ApiKeySummary>(
     `SELECT id, name, service, allowed_ips, rate_limit, is_active, created_at, expires_at, last_used_at, usage_count
      FROM api_keys
      WHERE id = ?`,
-    [result.lastID]
+    [result.lastID],
   )) as ApiKeySummary | undefined;
 
   if (!created) {
@@ -925,7 +969,10 @@ export async function deleteApiKey(id: number): Promise<boolean> {
 
 export async function revokeApiKey(id: number): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("UPDATE api_keys SET is_active = 0 WHERE id = ?", [id]);
+  const result = await database.run(
+    "UPDATE api_keys SET is_active = 0 WHERE id = ?",
+    [id],
+  );
   return (result.changes ?? 0) > 0;
 }
 
@@ -933,7 +980,7 @@ export async function touchApiKey(id: number): Promise<void> {
   const database = await getDb();
   await database.run(
     "UPDATE api_keys SET last_used_at = datetime('now'), usage_count = usage_count + 1 WHERE id = ?",
-    [id]
+    [id],
   );
 }
 
@@ -945,18 +992,20 @@ export async function setSetting(key: string, value: string): Promise<void> {
   const database = await getDb();
   await database.run(
     "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-    [key, value]
+    [key, value],
   );
 }
 
-export async function setSettings(pairs: Record<string, string>): Promise<void> {
+export async function setSettings(
+  pairs: Record<string, string>,
+): Promise<void> {
   const database = await getDb();
 
   await withTransaction(database, async () => {
     for (const [key, value] of Object.entries(pairs)) {
       await database.run(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        [key, value]
+        [key, value],
       );
     }
   });
@@ -965,13 +1014,16 @@ export async function setSettings(pairs: Record<string, string>): Promise<void> 
 export async function getAllSettings(): Promise<Record<string, string>> {
   const database = await getDb();
   const rows = (await database.all<{ key: string; value: string }[]>(
-    "SELECT key, value FROM settings"
+    "SELECT key, value FROM settings",
   )) as { key: string; value: string }[];
 
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
-async function parsePositiveSetting(key: string, fallback: number): Promise<number> {
+async function parsePositiveSetting(
+  key: string,
+  fallback: number,
+): Promise<number> {
   const rawValue = await getSetting(key);
   const parsedValue = Number.parseInt(rawValue ?? "", 10);
   if (!Number.isFinite(parsedValue) || parsedValue < 1) {
@@ -996,12 +1048,12 @@ export async function getAccessAuditRetentionDays(): Promise<number> {
 export async function checkAndSetCooldown(
   service: string,
   level: string,
-  cooldownMinutes: number
+  cooldownMinutes: number,
 ): Promise<boolean> {
   const database = await getDb();
   const row = (await database.get<{ last_sent: string }>(
     "SELECT last_sent FROM alert_cooldowns WHERE service = ? AND level = ?",
-    [service, level]
+    [service, level],
   )) as { last_sent: string } | undefined;
 
   if (row) {
@@ -1014,7 +1066,7 @@ export async function checkAndSetCooldown(
   await database.run(
     `INSERT OR REPLACE INTO alert_cooldowns (service, level, last_sent)
      VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
-    [service, level]
+    [service, level],
   );
 
   return true;
@@ -1023,7 +1075,7 @@ export async function checkAndSetCooldown(
 export async function countRecentLogs(
   level: string,
   service: string | null,
-  minutes: number
+  minutes: number,
 ): Promise<number> {
   const cond = service ? "AND service = ?" : "";
   const args = service ? [level, minutes, service] : [level, minutes];
@@ -1033,7 +1085,7 @@ export async function countRecentLogs(
      WHERE level = ?
      AND created_at >= datetime('now', '-' || ? || ' minutes')
      ${cond}`,
-    args
+    args,
   )) as { c: number } | undefined;
 
   return row?.c ?? 0;
@@ -1048,7 +1100,7 @@ export async function deleteOldLogs(days: number): Promise<number> {
   const database = await getDb();
   const result = await database.run(
     "DELETE FROM logs WHERE created_at < datetime('now', '-' || ? || ' days')",
-    [safeDays]
+    [safeDays],
   );
 
   return result.changes ?? 0;
@@ -1056,61 +1108,76 @@ export async function deleteOldLogs(days: number): Promise<number> {
 
 export async function exportLogs(
   filters: LogFilters = {},
-  allowedServices: string[] | null = null
+  allowedServices: string[] | null = null,
 ): Promise<Log[]> {
-  const { logs } = await queryLogs({ ...filters, limit: 100000, page: 1 }, allowedServices);
+  const { logs } = await queryLogs(
+    { ...filters, limit: 100000, page: 1 },
+    allowedServices,
+  );
   return logs;
 }
 
 export async function countUsers(): Promise<number> {
   const database = await getDb();
-  return ((await database.get<{ c: number }>(
-    "SELECT COUNT(*) as c FROM users"
-  )) as { c: number } | undefined)?.c ?? 0;
+  return (
+    (
+      (await database.get<{ c: number }>("SELECT COUNT(*) as c FROM users")) as
+        | { c: number }
+        | undefined
+    )?.c ?? 0
+  );
 }
 
 export async function countActiveAdmins(): Promise<number> {
   const database = await getDb();
   return (
-    ((await database.get<{ c: number }>(
-      "SELECT COUNT(*) as c FROM users WHERE role = 'admin' AND is_active = 1"
-    )) as { c: number } | undefined)?.c ?? 0
+    (
+      (await database.get<{ c: number }>(
+        "SELECT COUNT(*) as c FROM users WHERE role = 'admin' AND is_active = 1",
+      )) as { c: number } | undefined
+    )?.c ?? 0
   );
 }
 
 export async function countAdmins(): Promise<number> {
   const database = await getDb();
   return (
-    ((await database.get<{ c: number }>(
-      "SELECT COUNT(*) as c FROM users WHERE role = 'admin'"
-    )) as { c: number } | undefined)?.c ?? 0
+    (
+      (await database.get<{ c: number }>(
+        "SELECT COUNT(*) as c FROM users WHERE role = 'admin'",
+      )) as { c: number } | undefined
+    )?.c ?? 0
   );
 }
 
-export async function getUserByUsername(username: string): Promise<User | null> {
+export async function getUserByUsername(
+  username: string,
+): Promise<User | null> {
   const database = await getDb();
   await ensureUsersAllowedServicesColumn(database);
-  const row = (await database.get<UserRow>("SELECT * FROM users WHERE username = ?", [
-    username,
-  ])) as UserRow | undefined;
+  const row = (await database.get<UserRow>(
+    "SELECT * FROM users WHERE username = ?",
+    [username],
+  )) as UserRow | undefined;
   return row ? mapUser(row) : null;
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const database = await getDb();
   await ensureUsersAllowedServicesColumn(database);
-  const row = (await database.get<UserRow>("SELECT * FROM users WHERE email = ?", [email])) as
-    | UserRow
-    | undefined;
+  const row = (await database.get<UserRow>(
+    "SELECT * FROM users WHERE email = ?",
+    [email],
+  )) as UserRow | undefined;
   return row ? mapUser(row) : null;
 }
 
 export async function getUserById(id: number): Promise<User | null> {
   const database = await getDb();
   await ensureUsersAllowedServicesColumn(database);
-  const row = (await database.get<UserRow>("SELECT * FROM users WHERE id = ?", [id])) as
-    | UserRow
-    | undefined;
+  const row = (await database.get<UserRow>("SELECT * FROM users WHERE id = ?", [
+    id,
+  ])) as UserRow | undefined;
   return row ? mapUser(row) : null;
 }
 
@@ -1121,7 +1188,7 @@ export async function listUsers(): Promise<UserSummary[]> {
     `SELECT id, username, email, role, is_active, mfa_enabled, password_is_temporary,
             password_expires_at, allowed_services, created_at, last_login_at
      FROM users
-     ORDER BY created_at ASC`
+     ORDER BY created_at ASC`,
   )) as UserSummaryRow[];
 
   return rows.map((row) => mapUserSummary(row));
@@ -1153,7 +1220,7 @@ export async function createUser(data: {
       data.password_is_temporary ? 1 : 0,
       data.password_expires_at ?? null,
       serializeAllowedServices(data.allowed_services),
-    ]
+    ],
   );
 
   const created = (await database.get<UserSummaryRow>(
@@ -1161,7 +1228,7 @@ export async function createUser(data: {
             password_expires_at, allowed_services, created_at, last_login_at
      FROM users
      WHERE id = ?`,
-    [result.lastID]
+    [result.lastID],
   )) as UserSummaryRow | undefined;
 
   if (!created) {
@@ -1171,9 +1238,15 @@ export async function createUser(data: {
   return mapUserSummary(created);
 }
 
-export async function updateUserRole(id: number, role: UserRole): Promise<boolean> {
+export async function updateUserRole(
+  id: number,
+  role: UserRole,
+): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("UPDATE users SET role = ? WHERE id = ?", [role, id]);
+  const result = await database.run("UPDATE users SET role = ? WHERE id = ?", [
+    role,
+    id,
+  ]);
   return (result.changes ?? 0) > 0;
 }
 
@@ -1183,7 +1256,7 @@ export async function updateUserPassword(
   options?: {
     password_is_temporary?: boolean;
     password_expires_at?: string | null;
-  }
+  },
 ): Promise<boolean> {
   const database = await getDb();
   const result = await database.run(
@@ -1197,54 +1270,69 @@ export async function updateUserPassword(
       options?.password_is_temporary ? 1 : 0,
       options?.password_expires_at ?? null,
       id,
-    ]
+    ],
   );
 
   return (result.changes ?? 0) > 0;
 }
 
-export async function updateUserEmail(id: number, email: string | null): Promise<boolean> {
+export async function updateUserEmail(
+  id: number,
+  email: string | null,
+): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("UPDATE users SET email = ? WHERE id = ?", [email, id]);
+  const result = await database.run("UPDATE users SET email = ? WHERE id = ?", [
+    email,
+    id,
+  ]);
   return (result.changes ?? 0) > 0;
 }
 
 export async function updateUserAllowedServices(
   id: number,
-  allowedServices: string[] | null
+  allowedServices: string[] | null,
 ): Promise<boolean> {
   const database = await getDb();
   await ensureUsersAllowedServicesColumn(database);
-  const result = await database.run("UPDATE users SET allowed_services = ? WHERE id = ?", [
-    serializeAllowedServices(allowedServices),
-    id,
-  ]);
+  const result = await database.run(
+    "UPDATE users SET allowed_services = ? WHERE id = ?",
+    [serializeAllowedServices(allowedServices), id],
+  );
   return (result.changes ?? 0) > 0;
 }
 
-export async function updateUserMfaEnabled(id: number, enabled: boolean): Promise<boolean> {
+export async function updateUserMfaEnabled(
+  id: number,
+  enabled: boolean,
+): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("UPDATE users SET mfa_enabled = ? WHERE id = ?", [
-    enabled ? 1 : 0,
-    id,
-  ]);
+  const result = await database.run(
+    "UPDATE users SET mfa_enabled = ? WHERE id = ?",
+    [enabled ? 1 : 0, id],
+  );
 
   return (result.changes ?? 0) > 0;
 }
 
-export async function setUserActive(id: number, isActive: boolean): Promise<boolean> {
+export async function setUserActive(
+  id: number,
+  isActive: boolean,
+): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("UPDATE users SET is_active = ? WHERE id = ?", [
-    isActive ? 1 : 0,
-    id,
-  ]);
+  const result = await database.run(
+    "UPDATE users SET is_active = ? WHERE id = ?",
+    [isActive ? 1 : 0, id],
+  );
 
   return (result.changes ?? 0) > 0;
 }
 
 export async function touchUserLogin(id: number): Promise<void> {
   const database = await getDb();
-  await database.run("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", [id]);
+  await database.run(
+    "UPDATE users SET last_login_at = datetime('now') WHERE id = ?",
+    [id],
+  );
 }
 
 export async function createAuthSession(data: {
@@ -1256,12 +1344,12 @@ export async function createAuthSession(data: {
   const result = await database.run(
     `INSERT INTO auth_sessions (user_id, token_hash, expires_at)
      VALUES (?, ?, ?)`,
-    [data.user_id, data.token_hash, data.expires_at]
+    [data.user_id, data.token_hash, data.expires_at],
   );
 
   const session = (await database.get<AuthSession>(
     "SELECT * FROM auth_sessions WHERE id = ?",
-    [result.lastID]
+    [result.lastID],
   )) as AuthSession | undefined;
 
   if (!session) {
@@ -1271,11 +1359,13 @@ export async function createAuthSession(data: {
   return session;
 }
 
-export async function getUserBySessionTokenHash(tokenHash: string): Promise<UserSummary | null> {
+export async function getUserBySessionTokenHash(
+  tokenHash: string,
+): Promise<UserSummary | null> {
   const database = await getDb();
   await ensureUsersAllowedServicesColumn(database);
   const row = (await database.get<UserSummaryRow>(
-      `SELECT u.id, u.username, u.email, u.role, u.is_active, u.mfa_enabled,
+    `SELECT u.id, u.username, u.email, u.role, u.is_active, u.mfa_enabled,
               u.password_is_temporary, u.password_expires_at, u.allowed_services,
               u.created_at, u.last_login_at
        FROM auth_sessions s
@@ -1283,8 +1373,8 @@ export async function getUserBySessionTokenHash(tokenHash: string): Promise<User
        WHERE s.token_hash = ?
            AND datetime(s.expires_at) > datetime('now')
            AND u.is_active = 1`,
-      [tokenHash]
-    )) as UserSummaryRow | undefined;
+    [tokenHash],
+  )) as UserSummaryRow | undefined;
   return row ? mapUserSummary(row) : null;
 }
 
@@ -1305,12 +1395,12 @@ export async function createAuthChallenge(data: {
       data.token_hash,
       data.code_hash ?? null,
       data.expires_at,
-    ]
+    ],
   );
 
   const challenge = (await database.get<AuthChallenge>(
     "SELECT * FROM auth_challenges WHERE id = ?",
-    [result.lastID]
+    [result.lastID],
   )) as AuthChallenge | undefined;
 
   if (!challenge) {
@@ -1322,7 +1412,7 @@ export async function createAuthChallenge(data: {
 
 export async function getAuthChallengeByTokenHash(
   tokenHash: string,
-  purpose?: string
+  purpose?: string,
 ): Promise<AuthChallenge | null> {
   const database = await getDb();
   const query = purpose
@@ -1337,30 +1427,36 @@ export async function getAuthChallengeByTokenHash(
   return (
     ((await database.get<AuthChallenge>(
       query,
-      purpose ? [tokenHash, purpose] : [tokenHash]
+      purpose ? [tokenHash, purpose] : [tokenHash],
     )) as AuthChallenge | undefined) ?? null
   );
 }
 
 export async function deleteAuthChallenge(tokenHash: string): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("DELETE FROM auth_challenges WHERE token_hash = ?", [
-    tokenHash,
-  ]);
+  const result = await database.run(
+    "DELETE FROM auth_challenges WHERE token_hash = ?",
+    [tokenHash],
+  );
 
   return (result.changes ?? 0) > 0;
 }
 
-export async function deleteAuthChallengesForUser(userId: number): Promise<number> {
+export async function deleteAuthChallengesForUser(
+  userId: number,
+): Promise<number> {
   const database = await getDb();
-  const result = await database.run("DELETE FROM auth_challenges WHERE user_id = ?", [userId]);
+  const result = await database.run(
+    "DELETE FROM auth_challenges WHERE user_id = ?",
+    [userId],
+  );
   return result.changes ?? 0;
 }
 
 export async function cleanupExpiredAuthChallenges(): Promise<number> {
   const database = await getDb();
   const result = await database.run(
-    "DELETE FROM auth_challenges WHERE datetime(expires_at) <= datetime('now')"
+    "DELETE FROM auth_challenges WHERE datetime(expires_at) <= datetime('now')",
   );
 
   return result.changes ?? 0;
@@ -1368,22 +1464,28 @@ export async function cleanupExpiredAuthChallenges(): Promise<number> {
 
 export async function deleteAuthSession(tokenHash: string): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("DELETE FROM auth_sessions WHERE token_hash = ?", [
-    tokenHash,
-  ]);
+  const result = await database.run(
+    "DELETE FROM auth_sessions WHERE token_hash = ?",
+    [tokenHash],
+  );
 
   return (result.changes ?? 0) > 0;
 }
 
-export async function deleteAuthSessionsForUser(userId: number): Promise<number> {
+export async function deleteAuthSessionsForUser(
+  userId: number,
+): Promise<number> {
   const database = await getDb();
-  const result = await database.run("DELETE FROM auth_sessions WHERE user_id = ?", [userId]);
+  const result = await database.run(
+    "DELETE FROM auth_sessions WHERE user_id = ?",
+    [userId],
+  );
   return result.changes ?? 0;
 }
 
 export async function touchAuthSession(
   tokenHash: string,
-  idleTimeoutMinutes: number
+  idleTimeoutMinutes: number,
 ): Promise<void> {
   const database = await getDb();
   await database.run(
@@ -1391,14 +1493,14 @@ export async function touchAuthSession(
      SET last_seen_at = datetime('now'),
          expires_at = datetime('now', '+' || ? || ' minutes')
      WHERE token_hash = ?`,
-    [idleTimeoutMinutes, tokenHash]
+    [idleTimeoutMinutes, tokenHash],
   );
 }
 
 export async function cleanupExpiredAuthSessions(): Promise<number> {
   const database = await getDb();
   const result = await database.run(
-    "DELETE FROM auth_sessions WHERE datetime(expires_at) <= datetime('now')"
+    "DELETE FROM auth_sessions WHERE datetime(expires_at) <= datetime('now')",
   );
 
   return result.changes ?? 0;
@@ -1441,16 +1543,18 @@ export async function createUserAuditLog(data: {
       data.ip_address ?? null,
       data.user_agent ?? null,
       data.details ?? null,
-    ]
+    ],
   );
 
   if (data.action === "page_access") {
-    await deleteUserAccessAuditLogsOlderThan(await getAccessAuditRetentionDays());
+    await deleteUserAccessAuditLogsOlderThan(
+      await getAccessAuditRetentionDays(),
+    );
   }
 
   const auditLog = (await database.get<UserAuditLog>(
     "SELECT * FROM user_audit_logs WHERE id = ?",
-    [result.lastID]
+    [result.lastID],
   )) as UserAuditLog | undefined;
 
   if (!auditLog) {
@@ -1467,11 +1571,13 @@ export async function listUserAuditLogs(limit = 100): Promise<UserAuditLog[]> {
      FROM user_audit_logs
      ORDER BY created_at DESC, id DESC
      LIMIT ?`,
-    [limit]
+    [limit],
   )) as UserAuditLog[];
 }
 
-export async function listUserAccessAuditLogs(limit = 100): Promise<UserAuditLog[]> {
+export async function listUserAccessAuditLogs(
+  limit = 100,
+): Promise<UserAuditLog[]> {
   const database = await getDb();
   return (await database.all<UserAuditLog[]>(
     `SELECT *
@@ -1479,11 +1585,13 @@ export async function listUserAccessAuditLogs(limit = 100): Promise<UserAuditLog
      WHERE action = 'page_access'
      ORDER BY created_at DESC, id DESC
      LIMIT ?`,
-    [limit]
+    [limit],
   )) as UserAuditLog[];
 }
 
-export async function deleteUserAccessAuditLogsOlderThan(days: number): Promise<number> {
+export async function deleteUserAccessAuditLogsOlderThan(
+  days: number,
+): Promise<number> {
   const safeDays = Math.floor(days);
   if (!Number.isFinite(safeDays) || safeDays < 1) {
     throw new Error(`Invalid days value: ${days}`);
@@ -1494,7 +1602,7 @@ export async function deleteUserAccessAuditLogsOlderThan(days: number): Promise<
     `DELETE FROM user_audit_logs
      WHERE action = 'page_access'
      AND created_at < datetime('now', '-' || ? || ' days')`,
-    [safeDays]
+    [safeDays],
   );
 
   return result.changes ?? 0;
@@ -1503,7 +1611,7 @@ export async function deleteUserAccessAuditLogsOlderThan(days: number): Promise<
 export async function deleteAllUserAccessAuditLogs(): Promise<number> {
   const database = await getDb();
   const result = await database.run(
-    "DELETE FROM user_audit_logs WHERE action = 'page_access'"
+    "DELETE FROM user_audit_logs WHERE action = 'page_access'",
   );
 
   return result.changes ?? 0;
