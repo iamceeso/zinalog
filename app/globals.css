@@ -203,6 +203,20 @@ body {
   animation: fade-in 0.2s ease-out;
 }
 
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out;
+}
+
 @keyframes pulse-dot {
   0%,
   100% {
