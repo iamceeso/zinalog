@@ -1,8 +1,12 @@
 # ZinaLog
 
-ZinaLog is a lightweight, self-hosted logging server with a web dashboard for collecting, searching, and monitoring application logs — without needing a full observability stack.
+A lightweight, self-hosted logging server with a web dashboard without the complexity of ELK or Grafana.
+
+![ZinaLog Dashboard](./public/dashboard.png)
 
 ## Quick Start
+
+Requires Node.js 20+
 
 ```bash
 npx create-zinalog my-app
@@ -10,21 +14,11 @@ cd my-app
 npm run dev
 ```
 
-Open:
+Open `http://localhost:4000`
 
-```
-http://localhost:4000
-```
+## Docker
 
-![ZinaLog Dashboard](./public/dashboard.png)
-
-## Why ZinaLog
-
-- Runs anywhere with **zero infrastructure overhead**
-- Designed for teams that don’t want ELK/Grafana complexity
-- Fast setup — operational in minutes
-- Cost-efficient for small to mid-scale systems
-- Built for real-world debugging, not dashboards for show
+https://zinalog.com/docs/getting-started
 
 ## Features
 
@@ -35,40 +29,18 @@ http://localhost:4000
 - API key authentication with IP restrictions
 - Rate limiting
 - Alerts (email, Slack, Telegram, Discord)
-- Alert thresholds and cooldowns
-- Optional access auditing
-- SQLite-based storage (lightweight deployment)
-
-## Documentation
-
-Full documentation available here: https://zinalog.com
+- SQLite-based storage no external DB
 
 ## Data Persistence
 
-ZinaLog stores your data locally in the `./data` folder.
+Logs are stored locally in `./data` on your machine, not deleted on `docker compose down -v`.
 
-This means:
-
-- Your logs are on your machine
-- You can back them up easily
-- They are NOT deleted when running `docker compose down -v`
-- if you have issues access the data folder ensure the current user has access to the folder using this:
+If you hit permission issues:
 
 ```bash
- sudo chown -R $USER:$USER data
+sudo chown -R $USER:$USER data
 ```
 
-### Backup
+## Documentation
 
-```bash
-cp data/logs.db logs-backup.db
-```
-
-## Status
-
-ZinaLog is in early development. Expect changes and improvements.
-
-## 🛠 Requirements
-
-- Node.js 20+
-- npm
+Full docs at [zinalog.com](https://zinalog.com)
