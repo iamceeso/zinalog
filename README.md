@@ -43,9 +43,7 @@ http://localhost:3000
 
 ## Documentation
 
-Full documentation available here:
-
-👉 https://zinalog.com
+Full documentation available here:  https://zinalog.com
 
 ## Status
 
