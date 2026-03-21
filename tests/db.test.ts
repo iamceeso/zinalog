@@ -7,12 +7,20 @@ import test from "node:test";
 type DbModule = typeof import("../lib/db");
 
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
+const compiledSecretCryptoPath = path.resolve(__dirname, "../lib/secret-crypto.js");
+
+const TEST_ENCRYPTION_KEY = "a".repeat(64);
 
 async function loadDbModule() {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "zinalog-db-test-"));
   const databasePath = path.join(tempDir, "logs.db");
   const runtimeModulesDir = path.resolve(__dirname, "../.module-cache");
   await fs.mkdir(runtimeModulesDir, { recursive: true });
+
+  // secret-crypto.js is stateless; copy it once so db-runtime can require("./secret-crypto")
+  const cachedSecretCryptoPath = path.join(runtimeModulesDir, "secret-crypto.js");
+  await fs.copyFile(compiledSecretCryptoPath, cachedSecretCryptoPath);
+
   const runtimeModulePath = path.join(
     runtimeModulesDir,
     `db-runtime-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.cjs`
@@ -21,8 +29,10 @@ async function loadDbModule() {
 
   const previousNodeEnv = process.env.NODE_ENV;
   const previousDatabasePath = process.env.DATABASE_PATH;
+  const previousEncryptionKey = process.env.ENCRYPTION_KEY;
   process.env.NODE_ENV = "production";
   process.env.DATABASE_PATH = databasePath;
+  process.env.ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
   const dbModule = (await import(runtimeModulePath)) as DbModule;
 
   return {
@@ -31,6 +41,7 @@ async function loadDbModule() {
     dbModule,
     previousNodeEnv,
     previousDatabasePath,
+    previousEncryptionKey,
   };
 }
 
@@ -39,7 +50,8 @@ async function closeAndCleanup(
   runtimeModulePath: string,
   dbModule: DbModule,
   previousNodeEnv: string | undefined,
-  previousDatabasePath: string | undefined
+  previousDatabasePath: string | undefined,
+  previousEncryptionKey: string | undefined,
 ) {
   const db = await dbModule.getDb();
   await db.close();
@@ -53,15 +65,20 @@ async function closeAndCleanup(
   } else {
     process.env.DATABASE_PATH = previousDatabasePath;
   }
+  if (previousEncryptionKey === undefined) {
+    delete process.env.ENCRYPTION_KEY;
+  } else {
+    process.env.ENCRYPTION_KEY = previousEncryptionKey;
+  }
   await fs.rm(runtimeModulePath, { force: true });
   await fs.rm(tempDir, { recursive: true, force: true });
 }
 
 test("initializes the async SQLite database with default settings", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath } =
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath)
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   assert.equal(await dbModule.getSetting("retention_days"), "30");
@@ -75,10 +92,10 @@ test("initializes the async SQLite database with default settings", async (t) =>
 });
 
 test("writes, filters, and trims logs asynchronously", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath } =
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath)
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   await dbModule.setSetting("max_logs", "2");
@@ -141,10 +158,10 @@ test("writes, filters, and trims logs asynchronously", async (t) => {
 });
 
 test("creates, touches, revokes, and deletes API keys asynchronously", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath } =
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath)
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const rawKey = "zinalog_test_key_123";
@@ -174,10 +191,10 @@ test("creates, touches, revokes, and deletes API keys asynchronously", async (t)
 });
 
 test("supports async user, session, challenge, and audit operations", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath } =
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath)
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const user = await dbModule.createUser({
@@ -263,10 +280,10 @@ test("supports async user, session, challenge, and audit operations", async (t) 
 });
 
 test("groups logs, counts recent activity, and deletes retained logs", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath } =
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath)
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const oldestId = await dbModule.insertLog({
@@ -330,10 +347,10 @@ test("groups logs, counts recent activity, and deletes retained logs", async (t)
 });
 
 test("applies settings fallbacks and cleans up auth records", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath } =
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath)
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   await dbModule.setSettings({
@@ -432,4 +449,59 @@ test("applies settings fallbacks and cleans up auth records", async (t) => {
   ))!;
   assert.deepEqual(authRowsAfterDelete, { sessionCount: 0, challengeCount: 0 });
   assert.equal(await dbModule.countUsers(), 0);
+});
+
+test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+    await loadDbModule();
+  t.after(async () =>
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+  );
+
+  await dbModule.setSetting("smtp_pass", "s3cr3tpassword");
+  await dbModule.setSetting("resend_api_key", "re_abc123XYZ");
+  await dbModule.setSetting("telegram_bot_token", "123456:ABC-DEF");
+
+  // Values returned by the API should be plaintext (decrypted)
+  assert.equal(await dbModule.getSetting("smtp_pass"), "s3cr3tpassword");
+  assert.equal(await dbModule.getSetting("resend_api_key"), "re_abc123XYZ");
+  assert.equal(await dbModule.getSetting("telegram_bot_token"), "123456:ABC-DEF");
+
+  // getAllSettings should also return decrypted values
+  const all = await dbModule.getAllSettings();
+  assert.equal(all.smtp_pass, "s3cr3tpassword");
+  assert.equal(all.resend_api_key, "re_abc123XYZ");
+  assert.equal(all.telegram_bot_token, "123456:ABC-DEF");
+
+  // Raw DB values must be encrypted (not plain text)
+  const db = await dbModule.getDb();
+  const raw = await db.all<{ key: string; value: string }[]>(
+    "SELECT key, value FROM settings WHERE key IN ('smtp_pass', 'resend_api_key', 'telegram_bot_token')"
+  );
+  for (const row of raw) {
+    assert.ok(
+      row.value.startsWith("enc:"),
+      `Expected encrypted value for ${row.key}, got: ${row.value}`
+    );
+    assert.notEqual(row.value, "s3cr3tpassword");
+    assert.notEqual(row.value, "re_abc123XYZ");
+    assert.notEqual(row.value, "123456:ABC-DEF");
+  }
+
+  // setSettings (batch) should also encrypt
+  await dbModule.setSettings({ smtp_pass: "newpass", smtp_user: "user@example.com" });
+  assert.equal(await dbModule.getSetting("smtp_pass"), "newpass");
+  assert.equal(await dbModule.getSetting("smtp_user"), "user@example.com");
+  const rawSmtp = (await db.get<{ value: string }>(
+    "SELECT value FROM settings WHERE key = 'smtp_pass'"
+  ))!;
+  assert.ok(rawSmtp.value.startsWith("enc:"));
+
+  // Empty values should not be encrypted (stored as-is)
+  await dbModule.setSetting("smtp_pass", "");
+  assert.equal(await dbModule.getSetting("smtp_pass"), "");
+  const rawEmpty = (await db.get<{ value: string }>(
+    "SELECT value FROM settings WHERE key = 'smtp_pass'"
+  ))!;
+  assert.equal(rawEmpty.value, "");
 });

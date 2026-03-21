@@ -15,6 +15,7 @@
   "include": [
     "tests/**/*.ts",
     "lib/db.ts",
+    "lib/secret-crypto.ts",
     "lib/auth.ts",
     "lib/admin-rate-limit.ts",
     "lib/email.ts"

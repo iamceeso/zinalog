@@ -18,32 +18,47 @@ http://localhost:3000
 
 ![zinalog.com](public/dashboard.png)
 
-
 ## Why ZinaLog
 
-* Runs anywhere with **zero infrastructure overhead**
-* Designed for teams that don’t want ELK/Grafana complexity
-* Fast setup — operational in minutes
-* Cost-efficient for small to mid-scale systems
-* Built for real-world debugging, not dashboards for show
+- Runs anywhere with **zero infrastructure overhead**
+- Designed for teams that don’t want ELK/Grafana complexity
+- Fast setup — operational in minutes
+- Cost-efficient for small to mid-scale systems
+- Built for real-world debugging, not dashboards for show
 
 ## Features
 
-* HTTP log ingestion (`POST /api/logs`)
-* Real-time log streaming
-* Dashboard for logs, errors, and metrics
-* Role-based access (`admin`, `operator`, `viewer`)
-* API key authentication with IP restrictions
-* Rate limiting
-* Alerts (email, Slack, Telegram, Discord)
-* Alert thresholds and cooldowns
-* Optional access auditing
-* SQLite-based storage (lightweight deployment)
-
+- HTTP log ingestion (`POST /api/logs`)
+- Real-time log streaming
+- Dashboard for logs, errors, and metrics
+- Role-based access (`admin`, `operator`, `viewer`)
+- API key authentication with IP restrictions
+- Rate limiting
+- Alerts (email, Slack, Telegram, Discord)
+- Alert thresholds and cooldowns
+- Optional access auditing
+- SQLite-based storage (lightweight deployment)
 
 ## Documentation
 
-Full documentation available here:  https://zinalog.com
+Full documentation available here: https://zinalog.com
+
+## Data Persistence
+
+ZinaLog stores your data locally in the `./data` folder.
+
+This means:
+
+- Your logs are on your machine
+- You can back them up easily
+- They are NOT deleted when running `docker compose down -v`
+- if you have issues access the data folder ensure the current user has access to the folder using this: sudo chown -R $USER:$USER data
+
+### Backup
+
+```bash
+cp data/logs.db logs-backup.db
+```
 
 ## Status
 

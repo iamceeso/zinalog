@@ -3,6 +3,11 @@ import path from "path";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import sqlite3 from "sqlite3";
 import { open, type Database as SqliteDatabase } from "sqlite";
+import {
+  decryptSecret,
+  encryptSecret,
+  SENSITIVE_SETTING_KEYS,
+} from "./secret-crypto";
 
 const DB_PATH =
   process.env.DATABASE_PATH || path.join(process.cwd(), "data", "logs.db");
@@ -583,7 +588,9 @@ async function getSettingFromDb(
     [key],
   )) as { value: string } | undefined;
 
-  return row?.value ?? null;
+  const raw = row?.value ?? null;
+  if (raw === null) return null;
+  return SENSITIVE_SETTING_KEYS.has(key) ? decryptSecret(raw) : raw;
 }
 
 async function getMaxLogsLimitFromDb(
@@ -990,9 +997,10 @@ export async function getSetting(key: string): Promise<string | null> {
 
 export async function setSetting(key: string, value: string): Promise<void> {
   const database = await getDb();
+  const stored = SENSITIVE_SETTING_KEYS.has(key) ? encryptSecret(value) : value;
   await database.run(
     "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-    [key, value],
+    [key, stored],
   );
 }
 
@@ -1003,9 +1011,10 @@ export async function setSettings(
 
   await withTransaction(database, async () => {
     for (const [key, value] of Object.entries(pairs)) {
+      const stored = SENSITIVE_SETTING_KEYS.has(key) ? encryptSecret(value) : value;
       await database.run(
         "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-        [key, value],
+        [key, stored],
       );
     }
   });
@@ -1017,7 +1026,14 @@ export async function getAllSettings(): Promise<Record<string, string>> {
     "SELECT key, value FROM settings",
   )) as { key: string; value: string }[];
 
-  return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  return Object.fromEntries(
+    rows.map((row) => [
+      row.key,
+      SENSITIVE_SETTING_KEYS.has(row.key)
+        ? decryptSecret(row.value)
+        : row.value,
+    ]),
+  );
 }
 
 async function parsePositiveSetting(

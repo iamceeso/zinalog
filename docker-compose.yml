@@ -1,7 +1,6 @@
 services:
   zinalog:
     image: ghcr.io/iamceeso/zinalog:latest
-    container_name: zinalog
     restart: unless-stopped
     ports:
       - "4000:4000"
@@ -11,7 +10,4 @@ services:
       DATABASE_PATH: /data/logs.db
       TRUST_PROXY: "false"
     volumes:
-      - zinalog-data:/data
-
-volumes:
-  zinalog-data:
+      - ./data:/data
