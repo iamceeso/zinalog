@@ -39,19 +39,30 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
 
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
   const proto = req.headers.get("x-forwarded-proto") || "http";
-
-  const requestOrigin = `${proto}://${host}`;
+  const requestOrigin = host ? `${proto}://${host}` : req.nextUrl.origin;
 
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
   const fetchSite = req.headers.get("sec-fetch-site");
 
-  if (origin && matchesRequestOrigin(origin, requestOrigin)) {
-    return null;
+  if (origin) {
+    if (matchesRequestOrigin(origin, requestOrigin)) {
+      return null;
+    }
+    return NextResponse.json(
+      { error: "CSRF check failed: request origin does not match this server" },
+      { status: 403 },
+    );
   }
 
-  if (referer && matchesRequestOrigin(referer, requestOrigin)) {
-    return null;
+  if (referer) {
+    if (matchesRequestOrigin(referer, requestOrigin)) {
+      return null;
+    }
+    return NextResponse.json(
+      { error: "CSRF check failed: request origin does not match this server" },
+      { status: 403 },
+    );
   }
 
   if (fetchSite === "same-origin" || fetchSite === "same-site") {
@@ -62,5 +73,8 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
     return null;
   }
 
-  return NextResponse.json({ error: "CSRF check failed" }, { status: 403 });
+  return NextResponse.json(
+    { error: "CSRF check failed: missing same-origin request metadata" },
+    { status: 403 },
+  );
 }
