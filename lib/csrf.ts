@@ -23,7 +23,14 @@ function matchesRequestOrigin(
   return normalizeOrigin(candidate) === normalizeOrigin(requestOrigin);
 }
 
+const CSRF_EXCLUDED_PATHS = ["/api/logs"];
 export function checkCsrfProtection(req: NextRequest): NextResponse | null {
+  if (
+    CSRF_EXCLUDED_PATHS.some((path) => req.nextUrl.pathname.startsWith(path))
+  ) {
+    return null;
+  }
+
   if (SAFE_METHODS.has(req.method)) {
     return null;
   }

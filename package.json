@@ -3,9 +3,9 @@
   "version": "0.1.1",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port ${PORT:-4000}",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port ${PORT:-4000}",
     "lint": "eslint",
     "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test --test-concurrency=1 .test-dist/tests/*.test.js"
   },

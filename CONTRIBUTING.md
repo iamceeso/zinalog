@@ -47,14 +47,14 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Then open `http://localhost:4000`.
 
 ### First-time app setup
 
 ZinaLog bootstraps itself through the setup flow when the database has no users.
 
 1. Start the app locally.
-2. Visit `http://localhost:3000/setup`.
+2. Visit `http://localhost:4000/setup`.
 3. Create the first admin account.
 4. Sign in and create an API key.
 5. Send a test log to `POST /api/logs`.

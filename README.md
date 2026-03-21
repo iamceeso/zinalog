@@ -13,10 +13,10 @@ npm run dev
 Open:
 
 ```
-http://localhost:3000
+http://localhost:4000
 ```
 
-![zinalog.com](public/dashboard.png)
+![ZinaLog Dashboard](./public/dashboard.png)
 
 ## Why ZinaLog
 
@@ -52,7 +52,11 @@ This means:
 - Your logs are on your machine
 - You can back them up easily
 - They are NOT deleted when running `docker compose down -v`
-- if you have issues access the data folder ensure the current user has access to the folder using this: sudo chown -R $USER:$USER data
+- if you have issues access the data folder ensure the current user has access to the folder using this:
+
+```bash
+ sudo chown -R $USER:$USER data
+```
 
 ### Backup
 
