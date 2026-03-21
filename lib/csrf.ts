@@ -9,7 +9,8 @@ function normalizeOrigin(origin: string) {
     if (url.hostname === "127.0.0.1") {
       url.hostname = "localhost";
     }
-    return url.origin;
+    // normalize trailing slash issues
+    return `${url.protocol}//${url.host}`;
   } catch {
     return "";
   }
@@ -26,34 +27,25 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
   if (SAFE_METHODS.has(req.method)) {
     return null;
   }
+
   const isDev = process.env.NODE_ENV !== "production";
-  const requestOrigin = req.nextUrl.origin;
+
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "http";
+
+  const requestOrigin = `${proto}://${host}`;
 
   const origin = req.headers.get("origin");
-  if (origin) {
-    if (matchesRequestOrigin(origin, requestOrigin)) {
-      return null;
-    }
-
-    return NextResponse.json(
-      { error: "CSRF check failed: request origin does not match this server" },
-      { status: 403 },
-    );
-  }
-
   const referer = req.headers.get("referer");
-  if (referer) {
-    if (matchesRequestOrigin(referer, requestOrigin)) {
-      return null;
-    }
+  const fetchSite = req.headers.get("sec-fetch-site");
 
-    return NextResponse.json(
-      { error: "CSRF check failed: request origin does not match this server" },
-      { status: 403 },
-    );
+  if (origin && matchesRequestOrigin(origin, requestOrigin)) {
+    return null;
   }
 
-  const fetchSite = req.headers.get("sec-fetch-site");
+  if (referer && matchesRequestOrigin(referer, requestOrigin)) {
+    return null;
+  }
 
   if (fetchSite === "same-origin" || fetchSite === "same-site") {
     return null;
@@ -63,12 +55,5 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
     return null;
   }
 
-  if (!origin && !referer && isDev) {
-    return null;
-  }
-
-  return NextResponse.json(
-    { error: "CSRF check failed: missing same-origin request metadata" },
-    { status: 403 },
-  );
+  return NextResponse.json({ error: "CSRF check failed" }, { status: 403 });
 }
