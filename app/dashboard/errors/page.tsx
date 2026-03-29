@@ -19,9 +19,7 @@ export default async function ErrorsPage() {
     <div className="flex flex-col gap-5">
       {/* Header */}
       <div>
-        <h1 className="text-[22px] font-bold mb-1">
-          Error Groups
-        </h1>
+        <h1 className="text-[22px] font-bold mb-1">Error Groups</h1>
         <p className="text-[13px] text-(--text-muted)">
           Similar errors grouped by message and service
         </p>

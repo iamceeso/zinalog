@@ -13,12 +13,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { PartyPopper } from "lucide-react";
 import type { Log } from "@/lib/db";
 
 //  Level colour maps
-// Hex values are needed by Recharts SVG props (stroke, fill, Cell fill).
-// Tailwind classes are used everywhere else.
-
 const LEVEL_HEX: Record<string, string> = {
   error: "#f85149",
   warning: "#e3b341",
@@ -34,9 +32,6 @@ const LEVEL_DOT_CLASS: Record<string, string> = {
 };
 
 //  Shared Recharts theme config
-// Recharts accepts plain objects (not className) for its internal SVG/DOM
-// elements — these constants keep them DRY and out of JSX.
-
 const TOOLTIP_STYLE = {
   background: "var(--bg-surface)",
   border: "1px solid var(--border)",
@@ -52,7 +47,6 @@ const AXIS_TICK = { fontSize: 10, fill: "var(--text-dim)" };
 const YAXIS_TICK = { fontSize: 11, fill: "var(--text-muted)" };
 
 //  Shared wrappers
-
 export function CardShell({
   title,
   children,
@@ -74,7 +68,7 @@ export function CardShell({
   );
 }
 
-function Empty({ text = "No data yet" }: { text?: string }) {
+function Empty({ text = "No data yet" }: { text?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-center flex-1 py-6 text-[13px] text-(--text-dim)">
       {text}
@@ -169,7 +163,6 @@ export function ActivityChart({
 }
 
 //  Donut pie chart: level distribution
-
 export function LevelPieChart({
   byLevel,
 }: {
@@ -303,7 +296,7 @@ function formatTime(dt: string): string {
 
 export function RecentErrorsList({ errors }: { errors: Log[] }) {
   if (errors.length === 0) {
-    return <Empty text="No recent errors 🎉" />;
+    return <Empty text={<>No recent errors <PartyPopper size={14} className="inline align-middle" /></>} />;
   }
   return (
     <div className="flex flex-col divide-y divide-(--border)">

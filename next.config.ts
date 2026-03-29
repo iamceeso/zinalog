@@ -18,8 +18,6 @@ const securityHeaders = [
     value: "camera=(), microphone=(), geolocation=()",
   },
   {
-    // Next.js injects inline scripts/styles so unsafe-inline is required here.
-    // If you add a nonce-based approach later, remove unsafe-inline from both directives.
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
@@ -35,7 +33,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  // Turbopack (Next.js 16 default) handles native modules natively
   turbopack: {},
   async headers() {
     return [

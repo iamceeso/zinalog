@@ -9,6 +9,7 @@ import {
   Filter,
   Calendar,
   ChevronDown,
+  ArrowRight,
 } from "lucide-react";
 import LevelBadge from "./level-badge";
 import type { Log } from "@/lib/db";
@@ -530,7 +531,7 @@ export default function LogTable({
             </span>
           )}
           {filters.from && filters.to && (
-            <span className="text-(--text-dim)">→</span>
+            <span className="text-(--text-dim)"><ArrowRight size={12} /></span>
           )}
           {filters.to && (
             <span>

@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, Save, ShieldCheck, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import {
+  CheckCircle,
+  Save,
+  ShieldCheck,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+} from "lucide-react";
 import ConfirmModal from "@/components/confirm-modal";
 
 interface AccessAuditLog {
@@ -30,7 +37,9 @@ export default function AccessAuditPage() {
   const [purging, setPurging] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [confirmScope, setConfirmScope] = useState<"all" | "expired" | null>(null);
+  const [confirmScope, setConfirmScope] = useState<"all" | "expired" | null>(
+    null,
+  );
 
   const loadData = async () => {
     setLoading(true);
@@ -77,7 +86,7 @@ export default function AccessAuditPage() {
       setMessage(
         data.trimmed
           ? `Saved. Removed ${data.trimmed} expired access audit log${data.trimmed === 1 ? "" : "s"}.`
-          : "Saved access audit settings."
+          : "Saved access audit settings.",
       );
       setTimeout(() => setSaved(false), 2500);
       await loadData();
@@ -93,7 +102,9 @@ export default function AccessAuditPage() {
     setMessage("");
 
     try {
-      const res = await fetch(`/api/access-audit?scope=${scope}`, { method: "DELETE" });
+      const res = await fetch(`/api/access-audit?scope=${scope}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Failed to purge access audit logs");
@@ -112,7 +123,8 @@ export default function AccessAuditPage() {
       <div>
         <h1 className="text-[22px] font-bold mb-1">Access Audit</h1>
         <p className="text-[13px] text-(--text-muted)">
-          Review dashboard access events and control how long those records are kept.
+          Review dashboard access events and control how long those records are
+          kept.
         </p>
       </div>
 
@@ -124,7 +136,8 @@ export default function AccessAuditPage() {
               Access audit controls
             </div>
             <p className="text-[12px] text-(--text-dim) mt-1">
-              Turn dashboard page-access auditing on or off and set the retention interval.
+              Turn dashboard page-access auditing on or off and set the
+              retention interval.
             </p>
           </div>
           <button
@@ -132,7 +145,11 @@ export default function AccessAuditPage() {
             onClick={() => setEnabled((value) => !value)}
             className="bg-transparent border border-(--border) rounded-md px-3 py-2 text-[12px] text-(--text-muted) cursor-pointer flex items-center gap-2"
           >
-            {enabled ? <ToggleRight size={20} color="var(--success)" /> : <ToggleLeft size={20} color="var(--text-dim)" />}
+            {enabled ? (
+              <ToggleRight size={20} color="var(--success)" />
+            ) : (
+              <ToggleLeft size={20} color="var(--text-dim)" />
+            )}
             {enabled ? "Enabled" : "Disabled"}
           </button>
         </div>
@@ -194,31 +211,39 @@ export default function AccessAuditPage() {
 
       <div className="bg-(--bg-card) border border-(--border) rounded-[10px] overflow-hidden">
         <div className="px-4 py-3 border-b border-(--border)">
-          <h2 className="text-[15px] font-semibold text-foreground">Recent access events</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">
+            Recent access events
+          </h2>
         </div>
         {loading ? (
           <div className="p-8 text-[13px] text-(--text-dim)">Loading…</div>
         ) : logs.length === 0 ? (
-          <div className="p-8 text-[13px] text-(--text-dim)">No access audit logs recorded.</div>
+          <div className="p-8 text-[13px] text-(--text-dim)">
+            No access audit logs recorded.
+          </div>
         ) : (
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-(--bg-surface) border-b border-(--border)">
-                {["Time", "User", "Resource", "IP", "User Agent"].map((heading) => (
-                  <th
-                    key={heading}
-                    className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px]"
-                  >
-                    {heading}
-                  </th>
-                ))}
+                {["Time", "User", "Resource", "IP", "User Agent"].map(
+                  (heading) => (
+                    <th
+                      key={heading}
+                      className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px]"
+                    >
+                      {heading}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
               {logs.map((log, index) => (
                 <tr
                   key={log.id}
-                  className={index < logs.length - 1 ? "border-b border-(--border)" : ""}
+                  className={
+                    index < logs.length - 1 ? "border-b border-(--border)" : ""
+                  }
                 >
                   <td className="px-3.5 py-3 text-[12px] text-(--text-dim)">
                     {formatDate(log.created_at)}
@@ -233,7 +258,9 @@ export default function AccessAuditPage() {
                     {log.ip_address ?? "unknown"}
                   </td>
                   <td className="px-3.5 py-3 text-[12px] text-(--text-dim)">
-                    <span className="line-clamp-2">{log.user_agent ?? "unknown"}</span>
+                    <span className="line-clamp-2">
+                      {log.user_agent ?? "unknown"}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -244,13 +271,19 @@ export default function AccessAuditPage() {
 
       {confirmScope && (
         <ConfirmModal
-          title={confirmScope === "all" ? "Delete all access audit logs?" : "Delete expired access audit logs?"}
+          title={
+            confirmScope === "all"
+              ? "Delete all access audit logs?"
+              : "Delete expired access audit logs?"
+          }
           message={
             confirmScope === "all"
               ? "This will permanently remove every recorded dashboard access event."
               : "This will permanently remove access audit logs older than the configured retention interval."
           }
-          confirmLabel={confirmScope === "all" ? "Delete all" : "Delete expired"}
+          confirmLabel={
+            confirmScope === "all" ? "Delete all" : "Delete expired"
+          }
           danger
           onConfirm={() => void purgeLogs(confirmScope)}
           onCancel={() => setConfirmScope(null)}

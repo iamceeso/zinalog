@@ -12,7 +12,13 @@ export interface EmailConfig {
   provider: "smtp" | "resend" | "disabled";
   from: string;
   to: string;
-  smtp: { host: string; port: number; secure: boolean; user: string; pass: string };
+  smtp: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    pass: string;
+  };
   resendApiKey: string;
 }
 
@@ -33,7 +39,9 @@ export async function getEmailConfig(): Promise<EmailConfig> {
   };
 }
 
-export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; error?: string }> {
+export async function sendEmail(
+  payload: EmailPayload,
+): Promise<{ ok: boolean; error?: string }> {
   const cfg = await getEmailConfig();
 
   if (cfg.provider === "disabled") {
@@ -42,7 +50,8 @@ export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; e
 
   try {
     if (cfg.provider === "resend") {
-      if (!cfg.resendApiKey) return { ok: false, error: "Resend API key not configured" };
+      if (!cfg.resendApiKey)
+        return { ok: false, error: "Resend API key not configured" };
       const resend = new Resend(cfg.resendApiKey);
       const { error } = await resend.emails.send({
         from: cfg.from,
@@ -72,11 +81,14 @@ export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; e
     });
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
-//  Alert email builder 
+//  Alert email builder
 
 export function buildAlertEmail(log: {
   level: string;
@@ -87,10 +99,10 @@ export function buildAlertEmail(log: {
   created_at: string;
 }): { subject: string; html: string } {
   const levelColors: Record<string, string> = {
-    error:   "#f85149",
+    error: "#f85149",
     warning: "#d29922",
-    info:    "#8b949e",
-    debug:   "#79c0ff",
+    info: "#8b949e",
+    debug: "#79c0ff",
   };
   const color = levelColors[log.level] ?? "#8b949e";
   const service = log.service ?? "unknown service";
@@ -106,7 +118,9 @@ export function buildAlertEmail(log: {
             <pre style="margin:0;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;color:#8b949e;overflow:auto;font-family:monospace">${JSON.stringify(parsed, null, 2)}</pre>
           </td>
         </tr>`;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const stackHtml = log.stack

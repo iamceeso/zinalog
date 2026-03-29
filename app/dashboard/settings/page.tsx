@@ -137,7 +137,7 @@ function Field({
   children,
 }: {
   label: string;
-  hint?: string;
+  hint?: React.ReactNode;
   required?: boolean;
   children: React.ReactNode;
 }) {
@@ -1269,7 +1269,7 @@ export default function SettingsPage() {
                     >
                       <Field
                         label="Webhook URL"
-                        hint="Create at api.slack.com/apps → Incoming Webhooks"
+                        hint={<>Create at api.slack.com/apps <ChevronRight size={11} className="inline align-middle" /> Incoming Webhooks</>}
                         required
                       >
                         <input
@@ -1283,8 +1283,8 @@ export default function SettingsPage() {
                         />
                       </Field>
                       <InfoBox>
-                        Go to <strong>api.slack.com/apps</strong> → Create an
-                        app → Incoming Webhooks → Activate and copy the webhook
+                        Go to <strong>api.slack.com/apps</strong> <ChevronRight size={11} className="inline align-middle" /> Create an
+                        app <ChevronRight size={11} className="inline align-middle" /> Incoming Webhooks <ChevronRight size={11} className="inline align-middle" /> Activate and copy the webhook
                         URL.
                       </InfoBox>
                     </div>
@@ -1346,7 +1346,7 @@ export default function SettingsPage() {
                     >
                       <Field
                         label="Webhook URL"
-                        hint="Create in Discord channel settings → Integrations → Webhooks"
+                        hint={<>Create in Discord channel settings <ChevronRight size={11} className="inline align-middle" /> Integrations <ChevronRight size={11} className="inline align-middle" /> Webhooks</>}
                         required
                       >
                         <input
@@ -1360,9 +1360,9 @@ export default function SettingsPage() {
                         />
                       </Field>
                       <InfoBox>
-                        In Discord, open a channel →{" "}
+                        In Discord, open a channel <ChevronRight size={11} className="inline align-middle" />{" "}
                         <strong>
-                          Edit Channel → Integrations → Webhooks → New Webhook
+                          Edit Channel <ChevronRight size={11} className="inline align-middle" /> Integrations <ChevronRight size={11} className="inline align-middle" /> Webhooks <ChevronRight size={11} className="inline align-middle" /> New Webhook
                         </strong>
                         . Copy the webhook URL.
                       </InfoBox>

@@ -33,7 +33,9 @@ export default function StatCard({
         </span>
 
         {icon && (
-          <span className="opacity-80" style={{ color }}>{icon}</span>
+          <span className="opacity-80" style={{ color }}>
+            {icon}
+          </span>
         )}
       </div>
 
@@ -45,9 +47,7 @@ export default function StatCard({
       </div>
 
       {subtitle && (
-        <div className="text-[12px] text-(--text-dim)">
-          {subtitle}
-        </div>
+        <div className="text-[12px] text-(--text-dim)">{subtitle}</div>
       )}
     </div>
   );

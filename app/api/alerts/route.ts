@@ -7,9 +7,7 @@ import {
 } from "@/lib/alert-settings";
 import { requireApiUser } from "@/lib/session-auth";
 
-// ---------------------------------------------------------------------------
 // Validation helpers
-// ---------------------------------------------------------------------------
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_RE   = /^https?:\/\/.+/;
