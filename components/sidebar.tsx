@@ -232,8 +232,8 @@ export default function Sidebar({ currentUser }: { currentUser: SessionUser }) {
 
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
     router.refresh();
+    router.push("/login");
   };
 
   // Prevent body scroll when drawer is open
