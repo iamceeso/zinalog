@@ -13,9 +13,6 @@ const ADMIN_MUTATION_PATHS = [
 ];
 
 const MUTATION_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
-const ASSET_MATCHER =
-  "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)";
-
 function isAdminMutation(request: NextRequest): boolean {
   const { pathname } = request.nextUrl;
   return (
@@ -92,5 +89,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [ASSET_MATCHER],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
