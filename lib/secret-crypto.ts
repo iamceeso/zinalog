@@ -11,9 +11,14 @@ const TAG_BYTES = 16;
 const ENCRYPTED_PREFIX = "enc:";
 
 export const SENSITIVE_SETTING_KEYS = new Set([
+  "smtp_user",
   "smtp_pass",
   "resend_api_key",
   "telegram_bot_token",
+  "slack_webhook_url",
+  "discord_webhook_url",
+  "webhook_url",
+  "webhook_headers",
 ]);
 
 function getEncryptionKey(): Buffer | null {
@@ -69,8 +74,13 @@ export function decryptSecret(stored: string): string {
   const authTag = Buffer.from(tagHex, "hex");
   const ciphertext = Buffer.from(ciphertextHex, "hex");
 
-  if (iv.length !== IV_BYTES) throw new Error("Invalid IV length in encrypted setting");
-  if (authTag.length !== TAG_BYTES) throw new Error("Invalid auth tag in encrypted setting");
+  if (iv.length !== IV_BYTES) {
+    throw new Error("Invalid IV length in encrypted setting");
+  }
+
+  if (authTag.length !== TAG_BYTES) {
+    throw new Error("Invalid auth tag in encrypted setting");
+  }
 
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);

@@ -17,8 +17,10 @@
     "lib/db.ts",
     "lib/secret-crypto.ts",
     "lib/auth.ts",
+    "lib/auth-abuse.ts",
     "lib/admin-rate-limit.ts",
-    "lib/email.ts"
+    "lib/email.ts",
+    "lib/export-csv.ts"
   ],
   "exclude": ["node_modules", ".next", ".test-dist"]
 }

@@ -1254,6 +1254,50 @@ export async function createUser(data: {
   return mapUserSummary(created);
 }
 
+export async function createInitialAdminUser(data: {
+  username: string;
+  email: string;
+  password_hash: string;
+}): Promise<UserSummary> {
+  const database = await getDb();
+  await ensureUsersAllowedServicesColumn(database);
+
+  return withTransaction(database, async () => {
+    const existingUsers =
+      (
+        (await database.get<{ c: number }>("SELECT COUNT(*) as c FROM users")) as
+          | { c: number }
+          | undefined
+      )?.c ?? 0;
+
+    if (existingUsers > 0) {
+      throw new Error("Initial setup has already been completed");
+    }
+
+    const result = await database.run(
+      `INSERT INTO users (
+         username, email, password_hash, role, mfa_enabled, password_is_temporary, password_expires_at,
+         allowed_services
+       ) VALUES (?, ?, ?, 'admin', 0, 0, NULL, NULL)`,
+      [data.username, data.email, data.password_hash],
+    );
+
+    const created = (await database.get<UserSummaryRow>(
+      `SELECT id, username, email, role, is_active, mfa_enabled, password_is_temporary,
+              password_expires_at, allowed_services, created_at, last_login_at
+       FROM users
+       WHERE id = ?`,
+      [result.lastID],
+    )) as UserSummaryRow | undefined;
+
+    if (!created) {
+      throw new Error("Failed to load created user");
+    }
+
+    return mapUserSummary(created);
+  });
+}
+
 export async function updateUserRole(
   id: number,
   role: UserRole,

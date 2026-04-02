@@ -279,6 +279,32 @@ test("supports async user, session, challenge, and audit operations", async (t) 
   assert.equal(await dbModule.countUsers(), 0);
 });
 
+test("creates the initial admin only once", async (t) => {
+  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+    await loadDbModule();
+  t.after(async () =>
+    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+  );
+
+  const created = await dbModule.createInitialAdminUser({
+    username: "root",
+    email: "root@example.com",
+    password_hash: "hashed-password",
+  });
+
+  assert.equal(created.role, "admin");
+  assert.equal(await dbModule.countUsers(), 1);
+
+  await assert.rejects(
+    dbModule.createInitialAdminUser({
+      username: "root2",
+      email: "root2@example.com",
+      password_hash: "hashed-password-2",
+    }),
+    /Initial setup has already been completed/
+  );
+});
+
 test("groups logs, counts recent activity, and deletes retained logs", async (t) => {
   const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
@@ -459,24 +485,27 @@ test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
   );
 
   await dbModule.setSetting("smtp_pass", "s3cr3tpassword");
+  await dbModule.setSetting("slack_webhook_url", "https://hooks.slack.com/services/one/two/three");
   await dbModule.setSetting("resend_api_key", "re_abc123XYZ");
   await dbModule.setSetting("telegram_bot_token", "123456:ABC-DEF");
 
-  // Values returned by the API should be plaintext (decrypted)
   assert.equal(await dbModule.getSetting("smtp_pass"), "s3cr3tpassword");
+  assert.equal(
+    await dbModule.getSetting("slack_webhook_url"),
+    "https://hooks.slack.com/services/one/two/three"
+  );
   assert.equal(await dbModule.getSetting("resend_api_key"), "re_abc123XYZ");
   assert.equal(await dbModule.getSetting("telegram_bot_token"), "123456:ABC-DEF");
 
-  // getAllSettings should also return decrypted values
   const all = await dbModule.getAllSettings();
   assert.equal(all.smtp_pass, "s3cr3tpassword");
+  assert.equal(all.slack_webhook_url, "https://hooks.slack.com/services/one/two/three");
   assert.equal(all.resend_api_key, "re_abc123XYZ");
   assert.equal(all.telegram_bot_token, "123456:ABC-DEF");
 
-  // Raw DB values must be encrypted (not plain text)
   const db = await dbModule.getDb();
   const raw = await db.all<{ key: string; value: string }[]>(
-    "SELECT key, value FROM settings WHERE key IN ('smtp_pass', 'resend_api_key', 'telegram_bot_token')"
+    "SELECT key, value FROM settings WHERE key IN ('smtp_pass', 'slack_webhook_url', 'resend_api_key', 'telegram_bot_token')"
   );
   for (const row of raw) {
     assert.ok(
@@ -484,11 +513,11 @@ test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
       `Expected encrypted value for ${row.key}, got: ${row.value}`
     );
     assert.notEqual(row.value, "s3cr3tpassword");
+    assert.notEqual(row.value, "https://hooks.slack.com/services/one/two/three");
     assert.notEqual(row.value, "re_abc123XYZ");
     assert.notEqual(row.value, "123456:ABC-DEF");
   }
 
-  // setSettings (batch) should also encrypt
   await dbModule.setSettings({ smtp_pass: "newpass", smtp_user: "user@example.com" });
   assert.equal(await dbModule.getSetting("smtp_pass"), "newpass");
   assert.equal(await dbModule.getSetting("smtp_user"), "user@example.com");
@@ -497,7 +526,6 @@ test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
   ))!;
   assert.ok(rawSmtp.value.startsWith("enc:"));
 
-  // Empty values should not be encrypted (stored as-is)
   await dbModule.setSetting("smtp_pass", "");
   assert.equal(await dbModule.getSetting("smtp_pass"), "");
   const rawEmpty = (await db.get<{ value: string }>(

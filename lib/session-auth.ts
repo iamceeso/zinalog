@@ -11,6 +11,7 @@ import {
   countUsers,
   createAuthChallenge,
   createAuthSession,
+  createInitialAdminUser,
   createUser,
   createUserAuditLog,
   getAccessAuditRetentionDays,
@@ -42,6 +43,12 @@ import {
   type UserSummary,
 } from "./db";
 import { buildMfaEmail, buildUserInviteEmail, sendEmail } from "./email";
+import {
+  clearLoginAttempts,
+  clearMfaAttempts,
+  consumeLoginAttempt,
+  consumeMfaAttempt,
+} from "./auth-abuse";
 
 const PASSWORD_HASH_PREFIX = "scrypt";
 const PASSWORD_HASH_BYTES = 64;
@@ -460,14 +467,10 @@ export async function createInitialAdmin(input: {
   const email = ensureValidEmail(input.email);
   ensureStrongPassword(input.password);
 
-  return createUser({
+  return createInitialAdminUser({
     username: input.username.trim(),
     email,
     password_hash: hashPassword(input.password),
-    role: "admin",
-    mfa_enabled: false,
-    password_is_temporary: false,
-    password_expires_at: null,
   });
 }
 
@@ -476,9 +479,24 @@ export async function beginSignInWithPassword(
   input: { username: string; password: string }
 ): Promise<NextResponse> {
   const username = input.username.trim();
-  const user = await getUserByUsername(username);
   const ipAddress = getClientIp(req);
   const userAgent = req.headers.get("user-agent");
+
+  if (!consumeLoginAttempt(ipAddress, username)) {
+    await auditUserEvent({
+      action: "login_rate_limited",
+      resource: "auth/login",
+      ipAddress,
+      userAgent,
+      details: { username },
+    });
+    return NextResponse.json(
+      { error: "Too many login attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
+  const user = await getUserByUsername(username);
 
   if (!user || !user.is_active || !verifyPassword(input.password, user.password_hash)) {
     await auditUserEvent({
@@ -490,6 +508,8 @@ export async function beginSignInWithPassword(
     });
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
+
+  clearLoginAttempts(ipAddress, username);
 
   if (user.password_is_temporary) {
     const expiresAt = user.password_expires_at ? new Date(user.password_expires_at).getTime() : 0;
@@ -590,26 +610,44 @@ export async function verifyMfaCode(
     );
   }
 
+  const ipAddress = getClientIp(req);
+  const userAgent = req.headers.get("user-agent");
+  if (!consumeMfaAttempt(ipAddress, context.tokenHash)) {
+    await auditUserEvent({
+      actor: context.user,
+      subject: context.user,
+      action: "mfa_rate_limited",
+      resource: "auth/mfa",
+      ipAddress,
+      userAgent,
+    });
+    return NextResponse.json(
+      { error: "Too many verification attempts. Sign in again." },
+      { status: 429 },
+    );
+  }
+
   if (!verifyPassword(input.code.trim(), context.challenge.code_hash)) {
     await auditUserEvent({
       actor: context.user,
       subject: context.user,
       action: "mfa_failed",
       resource: "auth/mfa",
-      ipAddress: getClientIp(req),
-      userAgent: req.headers.get("user-agent"),
+      ipAddress,
+      userAgent,
     });
     return NextResponse.json({ error: "Invalid verification code" }, { status: 401 });
   }
 
+  clearMfaAttempts(ipAddress, context.tokenHash);
   await deleteAuthChallenge(context.tokenHash);
   await auditUserEvent({
     actor: context.user,
     subject: context.user,
     action: "mfa_verified",
     resource: "auth/mfa",
-    ipAddress: getClientIp(req),
-    userAgent: req.headers.get("user-agent"),
+    ipAddress,
+    userAgent,
   });
   return buildLoginResponse(context.user, req);
 }

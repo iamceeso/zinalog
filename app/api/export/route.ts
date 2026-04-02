@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exportLogs, Log } from "@/lib/db";
+import { exportLogs } from "@/lib/db";
+import { toCSV } from "@/lib/export-csv";
 import { requireApiUser } from "@/lib/session-auth";
-
-function toCSV(logs: Log[]): string {
-  if (logs.length === 0) return "id,level,message,service,stack,metadata,created_at\n";
-  const headers = ["id", "level", "message", "service", "stack", "metadata", "created_at"];
-  const escape = (v: unknown) => {
-    if (v === null || v === undefined) return "";
-    const s = String(v).replace(/"/g, '""');
-    return `"${s}"`;
-  };
-  const rows = logs.map((l) =>
-    headers.map((h) => escape(l[h as keyof Log])).join(",")
-  );
-  return [headers.join(","), ...rows].join("\n");
-}
 
 export async function GET(req: NextRequest) {
   const auth = await requireApiUser("viewer");
