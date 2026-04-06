@@ -22,7 +22,7 @@ import {
   LogOut,
   ShieldCheck,
 } from "lucide-react";
-import { APP_VERSION } from "@/lib/version";
+import { APP_VERSION_LABEL } from "@/lib/version";
 import type { SessionUser } from "@/lib/session-auth";
 
 const navItems = [
@@ -275,7 +275,7 @@ export default function Sidebar({ currentUser }: { currentUser: SessionUser }) {
                   ZinaLog
                 </div>
                 <div className="text-[10px] text-(--text-dim) -mt-0.5">
-                  App Logs {APP_VERSION}
+                  App Logs v{APP_VERSION_LABEL}
                 </div>
               </div>
             </div>
@@ -363,7 +363,7 @@ export default function Sidebar({ currentUser }: { currentUser: SessionUser }) {
                 ZinaLog
               </div>
               <div className="text-[10px] text-(--text-dim) -mt-px">
-                App Logs {APP_VERSION}
+                App Logs v{APP_VERSION_LABEL}
               </div>
             </div>
             <button

@@ -20,6 +20,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Capture build metadata
+        id: metadata
+        run: |
+          echo "app_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "app_commit_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -35,6 +41,11 @@ jobs:
         run: npm test
 
       - name: Build app
+        env:
+          APP_VERSION: ${{ steps.metadata.outputs.app_version }}
+          APP_COMMIT_SHA: ${{ steps.metadata.outputs.app_commit_sha }}
+          NEXT_PUBLIC_APP_VERSION: ${{ steps.metadata.outputs.app_version }}
+          NEXT_PUBLIC_APP_COMMIT_SHA: ${{ steps.metadata.outputs.app_commit_sha }}
         run: npm run build
 
       - name: Set up Docker Buildx
@@ -52,5 +63,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
+          build-args: |
+            APP_VERSION=${{ steps.metadata.outputs.app_version }}
+            APP_COMMIT_SHA=${{ steps.metadata.outputs.app_commit_sha }}
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/zinalog:latest
