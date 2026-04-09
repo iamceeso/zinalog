@@ -168,6 +168,7 @@ export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
                 className="h-12 w-12"
                 width={64}
                 height={64}
+                draggable={false}
               />
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--accent)">
@@ -199,6 +200,7 @@ export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
                 priority
                 className="h-auto w-full rounded-xl border border-[rgba(255,255,255,0.05)]"
                 sizes="(min-width: 1024px) 50vw, 100vw"
+                draggable={false}
               />
             </div>
           </section>
@@ -215,6 +217,7 @@ export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
                 className="h-12 w-12"
                 width={64}
                 height={64}
+                draggable={false}
               />
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--accent)">
