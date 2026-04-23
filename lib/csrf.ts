@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const TRUST_PROXY_PATTERN = /^(1|true|yes)$/i;
 
 function normalizeOrigin(origin: string) {
   try {
@@ -23,6 +24,26 @@ function matchesRequestOrigin(
   return normalizeOrigin(candidate) === normalizeOrigin(requestOrigin);
 }
 
+function trustProxyEnabled(): boolean {
+  return TRUST_PROXY_PATTERN.test(process.env.TRUST_PROXY ?? "");
+}
+
+function normalizeProtocol(value: string): string {
+  return value.endsWith(":") ? value : `${value}:`;
+}
+
+function getRequestOrigin(req: NextRequest): string {
+  const trustProxy = trustProxyEnabled();
+  const host = trustProxy
+    ? req.headers.get("x-forwarded-host") || req.headers.get("host")
+    : req.headers.get("host");
+  const proto = normalizeProtocol(
+    trustProxy ? req.headers.get("x-forwarded-proto") || "http" : req.nextUrl.protocol,
+  );
+
+  return host ? `${proto}//${host}` : req.nextUrl.origin;
+}
+
 const CSRF_EXCLUDED_PATHS = ["/api/logs"];
 export function checkCsrfProtection(req: NextRequest): NextResponse | null {
   if (
@@ -36,10 +57,7 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
   }
 
   const isDev = process.env.NODE_ENV !== "production";
-
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-  const proto = req.headers.get("x-forwarded-proto") || "http";
-  const requestOrigin = host ? `${proto}://${host}` : req.nextUrl.origin;
+  const requestOrigin = getRequestOrigin(req);
 
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");

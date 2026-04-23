@@ -70,3 +70,53 @@ test("checkCsrfProtection rejects requests without same-origin metadata", async 
     error: "CSRF check failed: missing same-origin request metadata",
   });
 });
+
+test("checkCsrfProtection ignores forwarded host headers unless TRUST_PROXY is enabled", async () => {
+  const previousTrustProxy = process.env.TRUST_PROXY;
+  delete process.env.TRUST_PROXY;
+
+  try {
+    const request = createRequest({
+      headers: {
+        origin: "https://public.example.com",
+        host: "public.example.com",
+        "x-forwarded-host": "internal:4000",
+        "x-forwarded-proto": "http",
+      },
+      url: "https://public.example.com/api/settings",
+    });
+
+    assert.equal(checkCsrfProtection(request), null);
+  } finally {
+    if (previousTrustProxy === undefined) {
+      delete process.env.TRUST_PROXY;
+    } else {
+      process.env.TRUST_PROXY = previousTrustProxy;
+    }
+  }
+});
+
+test("checkCsrfProtection trusts forwarded host headers when TRUST_PROXY is enabled", async () => {
+  const previousTrustProxy = process.env.TRUST_PROXY;
+  process.env.TRUST_PROXY = "true";
+
+  try {
+    const request = createRequest({
+      headers: {
+        origin: "https://public.example.com",
+        host: "internal:4000",
+        "x-forwarded-host": "public.example.com",
+        "x-forwarded-proto": "https",
+      },
+      url: "http://internal:4000/api/settings",
+    });
+
+    assert.equal(checkCsrfProtection(request), null);
+  } finally {
+    if (previousTrustProxy === undefined) {
+      delete process.env.TRUST_PROXY;
+    } else {
+      process.env.TRUST_PROXY = previousTrustProxy;
+    }
+  }
+});
