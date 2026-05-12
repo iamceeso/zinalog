@@ -57,4 +57,4 @@ ZinaLog stores logs exactly as received and does not inspect or redact their con
 
 Please report security vulnerabilities **responsibly** — do not open public GitHub issues for security problems.
 
-Send a report to **hello@chidiesobe.com** with a description of the issue, steps to reproduce it, and an assessment of potential impact. You will receive an acknowledgement within 72 hours.
+Send a report to **hi@ceeso.dev** with a description of the issue, steps to reproduce it, and an assessment of potential impact. You will receive an acknowledgement within 72 hours.
