@@ -1,5 +1,5 @@
 #  Stage 1: deps
-FROM node:20-slim AS deps
+FROM node:22-bookworm-slim AS deps
 
 # Native module build dependencies
 RUN apt-get update \
@@ -8,14 +8,15 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+
+ENV npm_config_build_from_source=true
+
 RUN npm ci
 
-#  Stage 2: builder
-FROM node:20-slim AS builder
+RUN npm rebuild sqlite3 --build-from-source
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ \
-  && rm -rf /var/lib/apt/lists/*
+#  Stage 2: builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 ARG APP_VERSION=dev
@@ -30,8 +31,9 @@ ENV NEXT_PUBLIC_APP_VERSION=$APP_VERSION
 ENV NEXT_PUBLIC_APP_COMMIT_SHA=$APP_COMMIT_SHA
 RUN npm run build
 
+
 #  Stage 3: runner
-FROM node:20-slim AS runner
+FROM node:22-bookworm-slim AS runner
 
 WORKDIR /app
 

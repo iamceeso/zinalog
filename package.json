@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --port ${PORT:-4000}",
     "lint": "eslint",
-    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test --test-concurrency=1 .test-dist/tests/*.test.js"
+    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && mkdir -p .test-dist/node_modules/next && cp tests/shims/next/server.js .test-dist/node_modules/next/server.js && node --test --test-concurrency=1 .test-dist/tests/*.test.js"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",
