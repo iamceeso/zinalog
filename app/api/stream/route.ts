@@ -9,15 +9,30 @@ export async function GET(req: Request) {
   const allowedServices = auth.user.allowed_services;
 
   const encoder = new TextEncoder();
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let poll: ReturnType<typeof setInterval> | undefined;
+  let closed = false;
+
+  const cleanup = () => {
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = undefined;
+    }
+    if (poll) {
+      clearInterval(poll);
+      poll = undefined;
+    }
+    closed = true;
+  };
 
   const stream = new ReadableStream({
     async start(controller) {
       // Send a heartbeat comment every 15s to keep connection alive
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(": heartbeat\n\n"));
         } catch {
-          clearInterval(heartbeat);
+          cleanup();
         }
       }, 15000);
 
@@ -43,8 +58,8 @@ export async function GET(req: Request) {
         )) as { id: number } | undefined)?.id ?? 0;
       let polling = false;
 
-      const poll = setInterval(() => {
-        if (polling) {
+      poll = setInterval(() => {
+        if (polling || closed) {
           return;
         }
 
@@ -68,8 +83,8 @@ export async function GET(req: Request) {
               controller.enqueue(encoder.encode(data));
             }
           } catch {
-            clearInterval(poll);
-            clearInterval(heartbeat);
+            cleanup();
+            controller.error(new Error("Log stream polling failed"));
           } finally {
             polling = false;
           }
@@ -77,16 +92,10 @@ export async function GET(req: Request) {
       }, 2000);
 
       // Cleanup on abrupt client disconnect (abort signal fires before cancel())
-      req.signal.addEventListener("abort", () => {
-        clearInterval(poll);
-        clearInterval(heartbeat);
-      });
-
-      // Cleanup when the stream is cancelled normally
-      return () => {
-        clearInterval(poll);
-        clearInterval(heartbeat);
-      };
+      req.signal.addEventListener("abort", cleanup, { once: true });
+    },
+    cancel() {
+      cleanup();
     },
   });
 

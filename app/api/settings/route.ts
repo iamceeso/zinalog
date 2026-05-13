@@ -11,6 +11,15 @@ function parsePositiveInt(value: unknown, field: string): number {
   return Math.floor(parsed);
 }
 
+function parseNonNegativeInt(value: unknown, field: string): number {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`Field '${field}' must be a non-negative integer`);
+  }
+
+  return Math.floor(parsed);
+}
+
 export async function GET() {
   const auth = await requireApiUser("admin");
   if (!auth.ok) return auth.response;
@@ -86,11 +95,18 @@ export async function DELETE(req: NextRequest) {
   const auth = await requireApiUser("admin");
   if (!auth.ok) return auth.response;
 
-  const { searchParams } = new URL(req.url);
-  const days = parseInt(searchParams.get("days") ?? "30", 10);
-  const deleted = await deleteOldLogs(days);
-  return NextResponse.json({
-    deleted,
-    message: `Deleted ${deleted} logs older than ${days} days`,
-  });
+  try {
+    const { searchParams } = new URL(req.url);
+    const days = parseNonNegativeInt(searchParams.get("days") ?? "30", "days");
+    const deleted = await deleteOldLogs(days);
+    return NextResponse.json({
+      deleted,
+      message: `Deleted ${deleted} logs older than ${days} days`,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Invalid days value" },
+      { status: 400 }
+    );
+  }
 }

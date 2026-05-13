@@ -6,6 +6,27 @@ import { requireApiUser } from "@/lib/session-auth";
 
 const VALID_LEVELS = ["info", "warning", "error", "debug"];
 
+function parsePositiveIntegerParam(
+  value: string | null,
+  fallback: number,
+  { min = 1, max }: { min?: number; max?: number } = {}
+): number {
+  if (value === null || value.trim() === "") {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < min) {
+    return fallback;
+  }
+
+  if (max !== undefined && parsed > max) {
+    return max;
+  }
+
+  return parsed;
+}
+
 // CORS headers so browser apps can log directly
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -121,8 +142,8 @@ export async function GET(req: NextRequest) {
     search: searchParams.get("search") ?? undefined,
     from: searchParams.get("from") ?? undefined,
     to: searchParams.get("to") ?? undefined,
-    page: parseInt(searchParams.get("page") ?? "1", 10),
-    limit: Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200),
+    page: parsePositiveIntegerParam(searchParams.get("page"), 1),
+    limit: parsePositiveIntegerParam(searchParams.get("limit"), 50, { max: 200 }),
   };
 
   const { logs, total } = await queryLogs(filters, auth.user.allowed_services);
