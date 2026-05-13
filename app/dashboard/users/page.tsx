@@ -101,29 +101,72 @@ export default function UsersPage() {
     allowed_services: null as string[] | null,
   });
 
-  const loadUsers = async () => {
-    setLoading(true);
-    setError("");
+  const fetchUsersData = async () => {
     try {
       const res = await fetch("/api/users");
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to load users");
-        return;
+        return { error: data.error ?? "Failed to load users" } as const;
       }
 
-      setUsers(data.users ?? []);
-      setCurrentUser(data.currentUser ?? null);
-      setRoles((data.roles ?? ["viewer", "operator", "admin"]) as UserRole[]);
-      setAvailableServices(data.availableServices ?? []);
-    } finally {
-      setLoading(false);
+      return {
+        users: data.users ?? [],
+        currentUser: data.currentUser ?? null,
+        roles: (data.roles ?? ["viewer", "operator", "admin"]) as UserRole[],
+        availableServices: data.availableServices ?? [],
+      } as const;
+    } catch {
+      return { error: "Failed to load users" } as const;
     }
   };
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadUsers = async () => {
+      const result = await fetchUsersData();
+      if (cancelled) {
+        return;
+      }
+
+      if ("error" in result) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+
+      setUsers(result.users);
+      setCurrentUser(result.currentUser);
+      setRoles(result.roles);
+      setAvailableServices(result.availableServices);
+      setLoading(false);
+    };
+
     void loadUsers();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const reloadUsers = async () => {
+    setLoading(true);
+    setError("");
+
+    const result = await fetchUsersData();
+    if ("error" in result) {
+      setError(result.error);
+      setLoading(false);
+      return false;
+    }
+
+    setUsers(result.users);
+    setCurrentUser(result.currentUser);
+    setRoles(result.roles);
+    setAvailableServices(result.availableServices);
+    setLoading(false);
+    return true;
+  };
 
   const createUser = async () => {
     setError("");
@@ -145,7 +188,7 @@ export default function UsersPage() {
       mfa_enabled: false,
       allowed_services: null,
     });
-    await loadUsers();
+    await reloadUsers();
   };
 
   const patchUser = async (id: number, payload: Record<string, unknown>) => {
@@ -161,7 +204,7 @@ export default function UsersPage() {
       return false;
     }
 
-    await loadUsers();
+    await reloadUsers();
     return true;
   };
 
@@ -174,7 +217,7 @@ export default function UsersPage() {
       return;
     }
 
-    await loadUsers();
+    await reloadUsers();
   };
 
   const saveEmail = async () => {

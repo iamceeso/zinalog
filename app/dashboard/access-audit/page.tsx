@@ -41,29 +41,71 @@ export default function AccessAuditPage() {
     null,
   );
 
-  const loadData = async () => {
-    setLoading(true);
-    setError("");
-
+  const fetchAccessAuditData = async () => {
     try {
       const res = await fetch("/api/access-audit");
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to load access audit settings");
-        return;
+        return {
+          error: data.error ?? "Failed to load access audit settings",
+        } as const;
       }
 
-      setEnabled(Boolean(data.enabled));
-      setRetentionDays(String(data.retention_days ?? "30"));
-      setLogs(data.logs ?? []);
-    } finally {
-      setLoading(false);
+      return {
+        enabled: Boolean(data.enabled),
+        retentionDays: String(data.retention_days ?? "30"),
+        logs: data.logs ?? [],
+      } as const;
+    } catch {
+      return { error: "Failed to load access audit settings" } as const;
     }
   };
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      const result = await fetchAccessAuditData();
+      if (cancelled) {
+        return;
+      }
+
+      if ("error" in result) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+
+      setEnabled(result.enabled);
+      setRetentionDays(result.retentionDays);
+      setLogs(result.logs);
+      setLoading(false);
+    };
+
     void loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const reloadData = async () => {
+    setLoading(true);
+    setError("");
+
+    const result = await fetchAccessAuditData();
+    if ("error" in result) {
+      setError(result.error);
+      setLoading(false);
+      return false;
+    }
+
+    setEnabled(result.enabled);
+    setRetentionDays(result.retentionDays);
+    setLogs(result.logs);
+    setLoading(false);
+    return true;
+  };
 
   const saveSettings = async () => {
     setSaving(true);
@@ -89,7 +131,7 @@ export default function AccessAuditPage() {
           : "Saved access audit settings.",
       );
       setTimeout(() => setSaved(false), 2500);
-      await loadData();
+      await reloadData();
     } finally {
       setSaving(false);
     }
@@ -112,7 +154,7 @@ export default function AccessAuditPage() {
       }
 
       setMessage(data.message ?? "Access audit logs deleted");
-      await loadData();
+      await reloadData();
     } finally {
       setPurging(false);
     }
