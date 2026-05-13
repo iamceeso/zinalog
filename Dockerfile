@@ -1,5 +1,5 @@
 #  Stage 1: deps
-FROM node:20-bookworm-slim AS deps
+FROM node:20-slim AS deps
 
 # Native module build dependencies
 RUN apt-get update \
@@ -11,7 +11,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 #  Stage 2: builder
-FROM node:20-bookworm-slim AS builder
+FROM node:20-slim AS builder
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
@@ -31,7 +31,7 @@ ENV NEXT_PUBLIC_APP_COMMIT_SHA=$APP_COMMIT_SHA
 RUN npm run build
 
 #  Stage 3: runner
-FROM node:20-bookworm-slim AS runner
+FROM node:20-slim AS runner
 
 WORKDIR /app
 

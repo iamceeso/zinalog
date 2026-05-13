@@ -9,6 +9,9 @@ import {
 } from "@/lib/db";
 import { requireApiUser } from "@/lib/session-auth";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 function parsePositiveInt(value: unknown, field: string): number {
   const parsed = Number.parseInt(String(value), 10);
   if (!Number.isFinite(parsed) || parsed < 1) {
