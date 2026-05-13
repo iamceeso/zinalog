@@ -1,17 +1,21 @@
-#  Stage 1: deps 
-FROM node:20-alpine AS deps
+#  Stage 1: deps
+FROM node:20-bookworm-slim AS deps
 
 # Native module build dependencies
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-#  Stage 2: builder 
-FROM node:20-alpine AS builder
+#  Stage 2: builder
+FROM node:20-bookworm-slim AS builder
 
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 ARG APP_VERSION=dev
@@ -26,10 +30,8 @@ ENV NEXT_PUBLIC_APP_VERSION=$APP_VERSION
 ENV NEXT_PUBLIC_APP_COMMIT_SHA=$APP_COMMIT_SHA
 RUN npm run build
 
-#  Stage 3: runner 
-FROM node:20-alpine AS runner
-
-RUN apk add --no-cache python3 make g++
+#  Stage 3: runner
+FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
 
