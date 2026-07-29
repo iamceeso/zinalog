@@ -1,5 +1,7 @@
 # ZinaLog
 
+[![Coverage](./.github/badges/coverage.svg)](./.github/workflows/coverage.yml)
+
 A lightweight, self-hosted logging server with a web dashboard without the complexity of ELK or Grafana.
 
 ![ZinaLog Dashboard](./public/dashboard.png)
