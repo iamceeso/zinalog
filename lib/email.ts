@@ -40,7 +40,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
 }
 
 export async function sendEmail(
-  payload: EmailPayload,
+  payload: EmailPayload
 ): Promise<{ ok: boolean; error?: string }> {
   const cfg = await getEmailConfig();
 

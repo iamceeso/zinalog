@@ -22,26 +22,50 @@ test("sanitizeAlertSettingsForClient masks sensitive alert settings", () => {
   assert.equal(sanitized.smtp_user, "********************");
   assert.equal(sanitized.smtp_pass, "********************");
   assert.equal(sanitized.resend_api_key, "re_********************");
-  assert.equal(sanitized.telegram_bot_token, "********************:********************");
+  assert.equal(
+    sanitized.telegram_bot_token,
+    "********************:********************"
+  );
   assert.equal(sanitized.slack_webhook_url, "********************");
   assert.equal(sanitized.webhook_headers, "********************");
   assert.equal("unrelated_key" in sanitized, false);
 });
 
 test("isMaskedAlertSettingValue only treats UI mask sentinels as preserved secrets", () => {
-  assert.equal(isMaskedAlertSettingValue("smtp_user", "********************"), true);
-  assert.equal(isMaskedAlertSettingValue("smtp_pass", "********************"), true);
-  assert.equal(isMaskedAlertSettingValue("resend_api_key", "re_********************"), true);
   assert.equal(
-    isMaskedAlertSettingValue("telegram_bot_token", "********************:********************"),
+    isMaskedAlertSettingValue("smtp_user", "********************"),
     true
   );
-  assert.equal(isMaskedAlertSettingValue("slack_webhook_url", "********************"), true);
+  assert.equal(
+    isMaskedAlertSettingValue("smtp_pass", "********************"),
+    true
+  );
+  assert.equal(
+    isMaskedAlertSettingValue("resend_api_key", "re_********************"),
+    true
+  );
+  assert.equal(
+    isMaskedAlertSettingValue(
+      "telegram_bot_token",
+      "********************:********************"
+    ),
+    true
+  );
+  assert.equal(
+    isMaskedAlertSettingValue("slack_webhook_url", "********************"),
+    true
+  );
   assert.equal(isMaskedAlertSettingValue("smtp_pass", "real-password"), false);
-  assert.equal(isMaskedAlertSettingValue("smtp_host", "smtp.example.com"), false);
+  assert.equal(
+    isMaskedAlertSettingValue("smtp_host", "smtp.example.com"),
+    false
+  );
 });
 
 test("maskAlertSettingValue leaves non-sensitive and empty values untouched", () => {
-  assert.equal(maskAlertSettingValue("smtp_host", "smtp.example.com"), "smtp.example.com");
+  assert.equal(
+    maskAlertSettingValue("smtp_host", "smtp.example.com"),
+    "smtp.example.com"
+  );
   assert.equal(maskAlertSettingValue("smtp_pass", ""), "");
 });

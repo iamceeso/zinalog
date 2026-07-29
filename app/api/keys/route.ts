@@ -49,16 +49,25 @@ export async function POST(req: NextRequest) {
   let normalizedExpiry: string | null = null;
   if (expires_at !== undefined && expires_at !== null && expires_at !== "") {
     if (typeof expires_at !== "string") {
-      return NextResponse.json({ error: "Field 'expires_at' must be a valid datetime string" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Field 'expires_at' must be a valid datetime string" },
+        { status: 400 }
+      );
     }
 
     const parsedExpiry = new Date(expires_at);
     if (Number.isNaN(parsedExpiry.getTime())) {
-      return NextResponse.json({ error: "Field 'expires_at' must be a valid datetime string" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Field 'expires_at' must be a valid datetime string" },
+        { status: 400 }
+      );
     }
 
     if (parsedExpiry.getTime() <= Date.now()) {
-      return NextResponse.json({ error: "Field 'expires_at' must be in the future" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Field 'expires_at' must be in the future" },
+        { status: 400 }
+      );
     }
 
     normalizedExpiry = parsedExpiry.toISOString();

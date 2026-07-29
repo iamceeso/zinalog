@@ -28,7 +28,9 @@ export function checkAdminRateLimit(req: NextRequest): NextResponse | null {
   entry.count += 1;
   if (entry.count > LIMIT) {
     return NextResponse.json(
-      { error: `Too many requests. Max ${LIMIT} admin requests/minute per IP.` },
+      {
+        error: `Too many requests. Max ${LIMIT} admin requests/minute per IP.`,
+      },
       { status: 429 }
     );
   }

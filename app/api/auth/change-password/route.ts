@@ -11,14 +11,20 @@ export async function POST(req: NextRequest) {
 
   const password = typeof body.password === "string" ? body.password : "";
   if (!password) {
-    return NextResponse.json({ error: "A new password is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "A new password is required" },
+      { status: 400 }
+    );
   }
 
   try {
     return await completeTemporaryPasswordChange(req, { password });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to change password" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to change password",
+      },
       { status: 400 }
     );
   }

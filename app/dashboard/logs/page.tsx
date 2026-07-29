@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition, Suspense, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useTransition,
+  Suspense,
+  useRef,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import LogTable from "@/components/log-table";
 import { Download } from "lucide-react";
@@ -57,7 +64,14 @@ function LogsContent() {
         isFirstLoad.current = false;
       }
     }
-  }, [filters.level, filters.service, filters.search, filters.from, filters.to, page]);
+  }, [
+    filters.level,
+    filters.service,
+    filters.search,
+    filters.from,
+    filters.to,
+    page,
+  ]);
 
   useEffect(() => {
     fetchLogs();
@@ -91,8 +105,10 @@ function LogsContent() {
     (from: string, to: string) => {
       startTransition(() => {
         const params = new URLSearchParams(searchParams.toString());
-        if (from) params.set("from", from); else params.delete("from");
-        if (to) params.set("to", to); else params.delete("to");
+        if (from) params.set("from", from);
+        else params.delete("from");
+        if (to) params.set("to", to);
+        else params.delete("to");
         params.delete("page");
         router.push(`/dashboard/logs?${params}`, { scroll: false });
       });

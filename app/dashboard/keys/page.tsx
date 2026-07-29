@@ -26,7 +26,7 @@ function formatDate(dt: string): string {
       month: "short",
       day: "numeric",
       year: "numeric",
-    },
+    }
   );
 }
 
@@ -296,7 +296,7 @@ export default function KeysPage() {
         setConfirm(null);
         await fetch(`/api/keys/${id}?action=revoke`, { method: "DELETE" });
         setKeys((prev) =>
-          prev.map((k) => (k.id === id ? { ...k, is_active: 0 } : k)),
+          prev.map((k) => (k.id === id ? { ...k, is_active: 0 } : k))
         );
       },
     });

@@ -26,7 +26,7 @@ const LEVEL_EMOJI: Record<string, string> = {
 //  Telegram
 
 export async function sendTelegram(
-  log: AlertLog,
+  log: AlertLog
 ): Promise<{ ok: boolean; error?: string }> {
   const s = await getAllSettings();
   const token = s.telegram_bot_token ?? "";
@@ -55,7 +55,7 @@ export async function sendTelegram(
           text: msg,
           parse_mode: "MarkdownV2",
         }),
-      },
+      }
     );
     const data = (await res.json()) as { ok: boolean; description?: string };
     return data.ok ? { ok: true } : { ok: false, error: data.description };
@@ -73,7 +73,7 @@ function escTg(text: string): string {
 
 //  Slack
 export async function sendSlack(
-  log: AlertLog,
+  log: AlertLog
 ): Promise<{ ok: boolean; error?: string }> {
   const s = await getAllSettings();
   const url = s.slack_webhook_url ?? "";
@@ -148,7 +148,7 @@ export async function sendSlack(
 //  Discord
 
 export async function sendDiscord(
-  log: AlertLog,
+  log: AlertLog
 ): Promise<{ ok: boolean; error?: string }> {
   const s = await getAllSettings();
   const url = s.discord_webhook_url ?? "";
@@ -205,7 +205,7 @@ export async function sendDiscord(
 //  Custom Webhook
 
 export async function sendWebhook(
-  log: AlertLog,
+  log: AlertLog
 ): Promise<{ ok: boolean; error?: string }> {
   const s = await getAllSettings();
   const url = s.webhook_url ?? "";
@@ -267,7 +267,7 @@ export interface ChannelResult {
 
 /** Fire all enabled channels for a given log. */
 export async function sendAllNotifications(
-  log: AlertLog,
+  log: AlertLog
 ): Promise<ChannelResult[]> {
   const s = await getAllSettings();
   const results: ChannelResult[] = [];
@@ -282,7 +282,7 @@ export async function sendAllNotifications(
         const { subject, html } = buildAlertEmail(log);
         const r = await sendEmail({ to: emailCfg.to, subject, html });
         results.push({ channel: "email", ...r });
-      })(),
+      })()
     );
   }
 
@@ -292,7 +292,7 @@ export async function sendAllNotifications(
       (async () => {
         const r = await sendTelegram(log);
         results.push({ channel: "telegram", ...r });
-      })(),
+      })()
     );
   }
 
@@ -302,7 +302,7 @@ export async function sendAllNotifications(
       (async () => {
         const r = await sendSlack(log);
         results.push({ channel: "slack", ...r });
-      })(),
+      })()
     );
   }
 
@@ -312,7 +312,7 @@ export async function sendAllNotifications(
       (async () => {
         const r = await sendDiscord(log);
         results.push({ channel: "discord", ...r });
-      })(),
+      })()
     );
   }
 
@@ -322,7 +322,7 @@ export async function sendAllNotifications(
       (async () => {
         const r = await sendWebhook(log);
         results.push({ channel: "webhook", ...r });
-      })(),
+      })()
     );
   }
 
@@ -332,7 +332,7 @@ export async function sendAllNotifications(
 
 /** Send a test notification to a single channel. */
 export async function sendTestNotification(
-  channel: Channel,
+  channel: Channel
 ): Promise<{ ok: boolean; error?: string }> {
   const testLog: AlertLog = {
     level: "error",

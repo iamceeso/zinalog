@@ -66,7 +66,7 @@ export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
     if (data.requiresMfa) {
       setStage("mfa");
       setMessage(
-        data.message ?? "Enter the verification code sent to your email.",
+        data.message ?? "Enter the verification code sent to your email."
       );
       setPassword("");
       return;
@@ -99,7 +99,7 @@ export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
     if (data.requiresMfa) {
       setStage("mfa");
       setMessage(
-        data.message ?? "Enter the verification code sent to your email.",
+        data.message ?? "Enter the verification code sent to your email."
       );
       return;
     }

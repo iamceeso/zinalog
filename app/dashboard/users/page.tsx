@@ -70,12 +70,15 @@ function buildServiceOptions(
   availableServices: string[],
   selectedServices: string[] | null
 ): string[] {
-  return Array.from(new Set([...availableServices, ...(selectedServices ?? [])])).sort((left, right) =>
-    left.localeCompare(right)
-  );
+  return Array.from(
+    new Set([...availableServices, ...(selectedServices ?? [])])
+  ).sort((left, right) => left.localeCompare(right));
 }
 
-function canManageUserTarget(actorRole: UserRole | undefined, targetRole: UserRole): boolean {
+function canManageUserTarget(
+  actorRole: UserRole | undefined,
+  targetRole: UserRole
+): boolean {
   if (actorRole === "admin") return true;
   if (actorRole === "operator") return targetRole !== "admin";
   return false;
@@ -83,16 +86,22 @@ function canManageUserTarget(actorRole: UserRole | undefined, targetRole: UserRo
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserSummary[]>([]);
-  const [roles, setRoles] = useState<UserRole[]>(["viewer", "operator", "admin"]);
+  const [roles, setRoles] = useState<UserRole[]>([
+    "viewer",
+    "operator",
+    "admin",
+  ]);
   const [availableServices, setAvailableServices] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [emailDialog, setEmailDialog] = useState<EmailDialogState | null>(null);
-  const [serviceAccessDialog, setServiceAccessDialog] = useState<ServiceAccessDialogState | null>(
-    null
-  );
-  const [deleteDialog, setDeleteDialog] = useState<{ id: number; username: string } | null>(null);
+  const [serviceAccessDialog, setServiceAccessDialog] =
+    useState<ServiceAccessDialogState | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    id: number;
+    username: string;
+  } | null>(null);
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -265,26 +274,35 @@ export default function UsersPage() {
 
       {isAdmin && (
         <div className="bg-(--bg-card) border border-(--border) rounded-[10px] p-5 flex flex-col gap-3.5">
-          <div className="text-[14px] font-semibold text-foreground">Create user</div>
+          <div className="text-[14px] font-semibold text-foreground">
+            Create user
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input
               className={inputCls}
               placeholder="Username"
               value={form.username}
-              onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, username: e.target.value }))
+              }
             />
             <input
               className={inputCls}
               type="email"
               placeholder="Email address"
               value={form.email}
-              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, email: e.target.value }))
+              }
             />
             <select
               className={inputCls}
               value={form.role}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, role: e.target.value as UserRole }))
+                setForm((prev) => ({
+                  ...prev,
+                  role: e.target.value as UserRole,
+                }))
               }
             >
               {roles.map((role) => (
@@ -306,9 +324,12 @@ export default function UsersPage() {
           </label>
           <div className="rounded-md border border-(--border) bg-(--bg-surface) px-3.5 py-3 flex flex-col gap-3">
             <div>
-              <div className="text-[13px] font-semibold text-foreground">Service access</div>
+              <div className="text-[13px] font-semibold text-foreground">
+                Service access
+              </div>
               <p className="text-[12px] text-(--text-dim) mt-1">
-                Limit this user to specific services, or leave access unrestricted.
+                Limit this user to specific services, or leave access
+                unrestricted.
               </p>
             </div>
 
@@ -317,7 +338,9 @@ export default function UsersPage() {
                 type="radio"
                 name="create-user-service-access"
                 checked={form.allowed_services === null}
-                onChange={() => setForm((prev) => ({ ...prev, allowed_services: null }))}
+                onChange={() =>
+                  setForm((prev) => ({ ...prev, allowed_services: null }))
+                }
               />
               All services
             </label>
@@ -327,7 +350,9 @@ export default function UsersPage() {
                 type="radio"
                 name="create-user-service-access"
                 checked={form.allowed_services !== null}
-                onChange={() => setForm((prev) => ({ ...prev, allowed_services: [] }))}
+                onChange={() =>
+                  setForm((prev) => ({ ...prev, allowed_services: [] }))
+                }
               />
               Only selected services
             </label>
@@ -336,8 +361,8 @@ export default function UsersPage() {
               <div className="flex flex-col gap-2">
                 {availableServices.length === 0 ? (
                   <div className="text-[12px] text-(--text-dim)">
-                    No services have been logged yet. You can create the user now and update access
-                    later.
+                    No services have been logged yet. You can create the user
+                    now and update access later.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -348,7 +373,9 @@ export default function UsersPage() {
                       >
                         <input
                           type="checkbox"
-                          checked={(form.allowed_services ?? []).includes(service)}
+                          checked={(form.allowed_services ?? []).includes(
+                            service
+                          )}
                           onChange={() =>
                             setForm((prev) => ({
                               ...prev,
@@ -368,8 +395,8 @@ export default function UsersPage() {
             )}
           </div>
           <p className="text-[12px] text-(--text-dim)">
-            A temporary password is generated automatically, emailed to the user, and expires in 10
-            minutes.
+            A temporary password is generated automatically, emailed to the
+            user, and expires in 10 minutes.
           </p>
           <button
             onClick={createUser}
@@ -388,7 +415,9 @@ export default function UsersPage() {
 
       <div className="bg-(--bg-card) border border-(--border) rounded-[10px] overflow-hidden">
         {loading ? (
-          <div className="p-10 text-center text-(--text-dim) text-[14px]">Loading…</div>
+          <div className="p-10 text-center text-(--text-dim) text-[14px]">
+            Loading…
+          </div>
         ) : (
           <table className="w-full border-collapse">
             <thead>
@@ -416,13 +445,21 @@ export default function UsersPage() {
             </thead>
             <tbody>
               {users.map((user, index) => {
-                const canManageTarget = canManageUserTarget(currentRole, user.role);
-                const isLastAdmin = user.role === "admin" && adminUserCount <= 1;
+                const canManageTarget = canManageUserTarget(
+                  currentRole,
+                  user.role
+                );
+                const isLastAdmin =
+                  user.role === "admin" && adminUserCount <= 1;
 
                 return (
                   <tr
                     key={user.id}
-                    className={index < users.length - 1 ? "border-b border-(--border)" : ""}
+                    className={
+                      index < users.length - 1
+                        ? "border-b border-(--border)"
+                        : ""
+                    }
                   >
                     <td className="px-3.5 py-3 text-[13px] font-semibold text-foreground">
                       {user.username}
@@ -453,7 +490,9 @@ export default function UsersPage() {
                           value={user.role}
                           disabled={isLastAdmin}
                           onChange={(e) =>
-                            void patchUser(user.id, { role: e.target.value as UserRole })
+                            void patchUser(user.id, {
+                              role: e.target.value as UserRole,
+                            })
                           }
                         >
                           {roles.map((role) => (
@@ -470,7 +509,10 @@ export default function UsersPage() {
                     </td>
                     <td className="px-3.5 py-3 text-[12px] text-(--text-dim)">
                       <div className="flex items-center gap-2">
-                        <span className="max-w-50 truncate" title={formatServiceAccess(user.allowed_services)}>
+                        <span
+                          className="max-w-50 truncate"
+                          title={formatServiceAccess(user.allowed_services)}
+                        >
                           {formatServiceAccess(user.allowed_services)}
                         </span>
                         {isAdmin && canManageTarget && (
@@ -496,7 +538,9 @@ export default function UsersPage() {
                             type="checkbox"
                             checked={!!user.mfa_enabled}
                             onChange={(e) =>
-                              void patchUser(user.id, { mfa_enabled: e.target.checked })
+                              void patchUser(user.id, {
+                                mfa_enabled: e.target.checked,
+                              })
                             }
                           />
                           Enabled
@@ -535,7 +579,9 @@ export default function UsersPage() {
                           <>
                             <button
                               onClick={() =>
-                                void patchUser(user.id, { is_active: !user.is_active })
+                                void patchUser(user.id, {
+                                  is_active: !user.is_active,
+                                })
                               }
                               disabled={isLastAdmin && !!user.is_active}
                               className="bg-transparent border border-(--border) rounded-md px-3 py-1.5 text-[12px] text-(--text-muted) cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -543,7 +589,11 @@ export default function UsersPage() {
                               {user.is_active ? "Disable" : "Enable"}
                             </button>
                             <button
-                              onClick={() => void patchUser(user.id, { send_reset_email: true })}
+                              onClick={() =>
+                                void patchUser(user.id, {
+                                  send_reset_email: true,
+                                })
+                              }
                               className="bg-transparent border border-(--border) rounded-md px-3 py-1.5 text-[12px] text-(--text-muted) cursor-pointer"
                             >
                               Email reset
@@ -553,7 +603,10 @@ export default function UsersPage() {
                         {canManageTarget && (
                           <button
                             onClick={() =>
-                              setDeleteDialog({ id: user.id, username: user.username })
+                              setDeleteDialog({
+                                id: user.id,
+                                username: user.username,
+                              })
                             }
                             disabled={isLastAdmin}
                             className="bg-transparent border border-[rgba(248,81,73,0.3)] rounded-md px-3 py-1.5 text-[12px] text-(--error) cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -595,7 +648,9 @@ export default function UsersPage() {
           }
         >
           <div>
-            <label className="text-[12px] text-(--text-muted) block mb-1.5">Email address</label>
+            <label className="text-[12px] text-(--text-muted) block mb-1.5">
+              Email address
+            </label>
             <input
               type="email"
               className={inputCls}
@@ -656,7 +711,12 @@ export default function UsersPage() {
                 checked={serviceAccessDialog.allowed_services !== null}
                 onChange={() =>
                   setServiceAccessDialog((current) =>
-                    current ? { ...current, allowed_services: current.allowed_services ?? [] } : current
+                    current
+                      ? {
+                          ...current,
+                          allowed_services: current.allowed_services ?? [],
+                        }
+                      : current
                   )
                 }
               />
@@ -670,8 +730,8 @@ export default function UsersPage() {
                   serviceAccessDialog.allowed_services
                 ).length === 0 ? (
                   <div className="text-[12px] text-(--text-dim)">
-                    No services have been logged yet. Save an empty selection to deny access until
-                    services become available.
+                    No services have been logged yet. Save an empty selection to
+                    deny access until services become available.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -685,7 +745,9 @@ export default function UsersPage() {
                       >
                         <input
                           type="checkbox"
-                          checked={(serviceAccessDialog.allowed_services ?? []).includes(service)}
+                          checked={(
+                            serviceAccessDialog.allowed_services ?? []
+                          ).includes(service)}
                           onChange={() =>
                             setServiceAccessDialog((current) =>
                               current && current.allowed_services !== null
@@ -725,7 +787,6 @@ export default function UsersPage() {
           }}
         />
       )}
-
     </div>
   );
 }

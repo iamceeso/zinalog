@@ -19,7 +19,7 @@ function normalizeOrigin(origin: string) {
 
 function matchesRequestOrigin(
   candidate: string,
-  requestOrigin: string,
+  requestOrigin: string
 ): boolean {
   return normalizeOrigin(candidate) === normalizeOrigin(requestOrigin);
 }
@@ -38,7 +38,9 @@ function getRequestOrigin(req: NextRequest): string {
     ? req.headers.get("x-forwarded-host") || req.headers.get("host")
     : req.headers.get("host");
   const proto = normalizeProtocol(
-    trustProxy ? req.headers.get("x-forwarded-proto") || "http" : req.nextUrl.protocol,
+    trustProxy
+      ? req.headers.get("x-forwarded-proto") || "http"
+      : req.nextUrl.protocol
   );
 
   return host ? `${proto}//${host}` : req.nextUrl.origin;
@@ -69,7 +71,7 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
     }
     return NextResponse.json(
       { error: "CSRF check failed: request origin does not match this server" },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -79,7 +81,7 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
     }
     return NextResponse.json(
       { error: "CSRF check failed: request origin does not match this server" },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
@@ -93,6 +95,6 @@ export function checkCsrfProtection(req: NextRequest): NextResponse | null {
 
   return NextResponse.json(
     { error: "CSRF check failed: missing same-origin request metadata" },
-    { status: 403 },
+    { status: 403 }
   );
 }

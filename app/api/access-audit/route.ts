@@ -48,19 +48,30 @@ export async function PATCH(req: NextRequest) {
 
   if (body.enabled !== undefined) {
     if (typeof body.enabled !== "boolean") {
-      return NextResponse.json({ error: "Field 'enabled' must be boolean" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Field 'enabled' must be boolean" },
+        { status: 400 }
+      );
     }
     pairs.access_audit_enabled = body.enabled ? "1" : "0";
   }
 
   if (body.retention_days !== undefined) {
     try {
-      const retentionDays = parsePositiveInt(body.retention_days, "retention_days");
+      const retentionDays = parsePositiveInt(
+        body.retention_days,
+        "retention_days"
+      );
       pairs.access_audit_retention_days = String(retentionDays);
       trimmed = await deleteUserAccessAuditLogsOlderThan(retentionDays);
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid retention_days value" },
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid retention_days value",
+        },
         { status: 400 }
       );
     }
@@ -92,7 +103,8 @@ export async function DELETE(req: NextRequest) {
     );
     return NextResponse.json({
       deleted,
-      message: "Deleted access audit logs older than the current retention period",
+      message:
+        "Deleted access audit logs older than the current retention period",
     });
   }
 

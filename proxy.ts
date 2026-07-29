@@ -18,14 +18,14 @@ function isAdminMutation(request: NextRequest): boolean {
   return (
     MUTATION_METHODS.has(request.method) &&
     ADMIN_MUTATION_PATHS.some(
-      (path) => pathname === path || pathname.startsWith(`${path}/`),
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
     )
   );
 }
 
 function buildContentSecurityPolicy(
   request: NextRequest,
-  nonce: string,
+  nonce: string
 ): string {
   const scriptSources = [`'self'`, `'nonce-${nonce}'`];
   if (process.env.NODE_ENV !== "production") {
@@ -60,11 +60,11 @@ function continueRequest(request: NextRequest, nonce: string): NextResponse {
 function finalizeResponse(
   request: NextRequest,
   response: NextResponse,
-  nonce: string,
+  nonce: string
 ): NextResponse {
   response.headers.set(
     "Content-Security-Policy",
-    buildContentSecurityPolicy(request, nonce),
+    buildContentSecurityPolicy(request, nonce)
   );
   return response;
 }

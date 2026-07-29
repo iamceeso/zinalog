@@ -29,5 +29,7 @@ export async function DELETE(
     return NextResponse.json({ error: "API key not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ status: action === "revoke" ? "revoked" : "deleted" });
+  return NextResponse.json({
+    status: action === "revoke" ? "revoked" : "deleted",
+  });
 }

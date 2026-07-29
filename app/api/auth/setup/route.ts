@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
     return await buildLoginResponse(user, req);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to complete setup" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to complete setup",
+      },
       { status: 400 }
     );
   }

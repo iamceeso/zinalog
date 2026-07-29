@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
   const username = typeof body.username === "string" ? body.username : "";
   const email = typeof body.email === "string" ? body.email : "";
   const role = typeof body.role === "string" ? body.role : "";
-  const mfaEnabled = typeof body.mfa_enabled === "boolean" ? body.mfa_enabled : false;
+  const mfaEnabled =
+    typeof body.mfa_enabled === "boolean" ? body.mfa_enabled : false;
   const allowedServices = body.allowed_services;
   const roles = getRoleOptions();
 
@@ -61,7 +62,9 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create user" },
+      {
+        error: error instanceof Error ? error.message : "Failed to create user",
+      },
       { status: 400 }
     );
   }

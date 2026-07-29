@@ -49,13 +49,22 @@ test("secret crypto validates key and encrypted payload structure", () => {
     );
 
     process.env.ENCRYPTION_KEY = VALID_ENCRYPTION_KEY;
-    assert.throws(() => decryptSecret("enc:missing-parts"), /Malformed encrypted setting value/);
     assert.throws(
-      () => decryptSecret(`enc:${"00".repeat(11)}:${"11".repeat(16)}:${"22".repeat(2)}`),
+      () => decryptSecret("enc:missing-parts"),
+      /Malformed encrypted setting value/
+    );
+    assert.throws(
+      () =>
+        decryptSecret(
+          `enc:${"00".repeat(11)}:${"11".repeat(16)}:${"22".repeat(2)}`
+        ),
       /Invalid IV length/
     );
     assert.throws(
-      () => decryptSecret(`enc:${"00".repeat(12)}:${"11".repeat(15)}:${"22".repeat(2)}`),
+      () =>
+        decryptSecret(
+          `enc:${"00".repeat(12)}:${"11".repeat(15)}:${"22".repeat(2)}`
+        ),
       /Invalid auth tag/
     );
   } finally {

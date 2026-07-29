@@ -9,7 +9,10 @@ const compiledEmailModulePath = path.resolve(__dirname, "../lib/email.js");
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
 const cjsRequire = createRequire(import.meta.url);
 
-function mockModule(modulePath: string, exports: object): NodeModule | undefined {
+function mockModule(
+  modulePath: string,
+  exports: object
+): NodeModule | undefined {
   const previous = cjsRequire.cache[modulePath];
   cjsRequire.cache[modulePath] = {
     id: modulePath,
@@ -26,7 +29,10 @@ function mockModule(modulePath: string, exports: object): NodeModule | undefined
   return previous;
 }
 
-function restoreModule(modulePath: string, previous: NodeModule | undefined): void {
+function restoreModule(
+  modulePath: string,
+  previous: NodeModule | undefined
+): void {
   if (previous) {
     cjsRequire.cache[modulePath] = previous;
   } else {
@@ -36,8 +42,12 @@ function restoreModule(modulePath: string, previous: NodeModule | undefined): vo
 
 async function loadEmailModule(options: {
   settings: Record<string, string>;
-  resendSend?: (payload: unknown) => Promise<{ error?: { message: string } | null }>;
-  createTransport?: (config: unknown) => { sendMail: (payload: unknown) => Promise<unknown> };
+  resendSend?: (
+    payload: unknown
+  ) => Promise<{ error?: { message: string } | null }>;
+  createTransport?: (config: unknown) => {
+    sendMail: (payload: unknown) => Promise<unknown>;
+  };
 }) {
   const previousEmailCache = cjsRequire.cache[compiledEmailModulePath];
   const previousDbCache = mockModule(compiledDbModulePath, {

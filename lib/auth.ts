@@ -71,7 +71,7 @@ function matchesCidr(ip: string, entry: string): boolean {
   }
 
   const shift = BigInt(totalBits - prefixLength);
-  return (ipValue.value >> shift) === (rangeValue.value >> shift);
+  return ipValue.value >> shift === rangeValue.value >> shift;
 }
 
 function checkIpAllowed(key: ApiKey, ip: string): boolean {
@@ -102,7 +102,9 @@ export interface AuthResult {
 }
 
 function isExpired(apiKey: ApiKey): boolean {
-  return !!apiKey.expires_at && new Date(apiKey.expires_at).getTime() <= Date.now();
+  return (
+    !!apiKey.expires_at && new Date(apiKey.expires_at).getTime() <= Date.now()
+  );
 }
 
 export async function validateApiKey(req: NextRequest): Promise<AuthResult> {

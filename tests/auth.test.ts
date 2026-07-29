@@ -147,15 +147,36 @@ async function closeAuthModule(
 }
 
 test("getClientIp normalizes direct request IP values", async (t) => {
-  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
-    await loadAuthModule();
+  const {
+    mockId,
+    authModule,
+    previousTrustProxy,
+    previousDbCache,
+    previousAuthCache,
+    previousIpCache,
+  } = await loadAuthModule();
   t.after(async () =>
-    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+    closeAuthModule(
+      mockId,
+      previousTrustProxy,
+      previousDbCache,
+      previousAuthCache,
+      previousIpCache
+    )
   );
 
-  assert.equal(authModule.getClientIp(createRequest({ ip: "::ffff:192.0.2.10" })), "192.0.2.10");
-  assert.equal(authModule.getClientIp(createRequest({ ip: "fe80::1%eth0" })), "fe80::1");
-  assert.equal(authModule.getClientIp(createRequest({ ip: "[2001:db8::1]" })), "2001:db8::1");
+  assert.equal(
+    authModule.getClientIp(createRequest({ ip: "::ffff:192.0.2.10" })),
+    "192.0.2.10"
+  );
+  assert.equal(
+    authModule.getClientIp(createRequest({ ip: "fe80::1%eth0" })),
+    "fe80::1"
+  );
+  assert.equal(
+    authModule.getClientIp(createRequest({ ip: "[2001:db8::1]" })),
+    "2001:db8::1"
+  );
 });
 
 test("getClientIp trusts forwarded headers only when TRUST_PROXY is enabled", async (t) => {
@@ -231,9 +252,15 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
     allowed_ips: "0.0.0.0/0",
   });
 
-  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
-    await loadAuthModule({
-      getApiKey: async (rawKey) => {
+  const {
+    mockId,
+    authModule,
+    previousTrustProxy,
+    previousDbCache,
+    previousAuthCache,
+    previousIpCache,
+  } = await loadAuthModule({
+    getApiKey: async (rawKey) => {
       if (rawKey === "expired-key") return expiredKey;
       if (rawKey === "allowed-key") return allowedKey;
       if (rawKey === "exact-ip-key") return exactIpKey;
@@ -243,13 +270,20 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
     },
   });
   t.after(async () =>
-    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+    closeAuthModule(
+      mockId,
+      previousTrustProxy,
+      previousDbCache,
+      previousAuthCache,
+      previousIpCache
+    )
   );
 
   const missing = await authModule.validateApiKey(createRequest());
   assert.deepEqual(missing, {
     success: false,
-    error: "Missing or invalid Authorization header. Use: Authorization: Bearer YOUR_API_KEY",
+    error:
+      "Missing or invalid Authorization header. Use: Authorization: Bearer YOUR_API_KEY",
     status: 401,
   });
 
@@ -344,15 +378,28 @@ test("validateApiKey increments usage only for requests within the rate limit", 
     rate_limit: 2,
   });
 
-  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
-    await loadAuthModule({
-    getApiKey: async (rawKey) => (rawKey === "burst-key" ? rateLimitedKey : null),
+  const {
+    mockId,
+    authModule,
+    previousTrustProxy,
+    previousDbCache,
+    previousAuthCache,
+    previousIpCache,
+  } = await loadAuthModule({
+    getApiKey: async (rawKey) =>
+      rawKey === "burst-key" ? rateLimitedKey : null,
     touchApiKey: async (id) => {
       touchedKeyIds.push(id);
     },
   });
   t.after(async () =>
-    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+    closeAuthModule(
+      mockId,
+      previousTrustProxy,
+      previousDbCache,
+      previousAuthCache,
+      previousIpCache
+    )
   );
 
   const request = () =>
@@ -387,19 +434,31 @@ test("validateApiKey resets rate limits after the window and skips limiting for 
     rate_limit: 1,
   });
 
-  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
-    await loadAuthModule({
-      getApiKey: async (rawKey) => {
-        if (rawKey === "unlimited-key") return unlimitedKey;
-        if (rawKey === "single-burst-key") return singleBurstKey;
-        return null;
-      },
-      touchApiKey: async (id) => {
-        touchedKeyIds.push(id);
-      },
-    });
+  const {
+    mockId,
+    authModule,
+    previousTrustProxy,
+    previousDbCache,
+    previousAuthCache,
+    previousIpCache,
+  } = await loadAuthModule({
+    getApiKey: async (rawKey) => {
+      if (rawKey === "unlimited-key") return unlimitedKey;
+      if (rawKey === "single-burst-key") return singleBurstKey;
+      return null;
+    },
+    touchApiKey: async (id) => {
+      touchedKeyIds.push(id);
+    },
+  });
   t.after(async () =>
-    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+    closeAuthModule(
+      mockId,
+      previousTrustProxy,
+      previousDbCache,
+      previousAuthCache,
+      previousIpCache
+    )
   );
 
   const restoreNow = Date.now;

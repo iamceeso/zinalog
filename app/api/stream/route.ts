@@ -45,17 +45,23 @@ export async function GET(req: Request) {
         if (allowedServices.length === 0) {
           serviceConditions.push("1 = 0");
         } else {
-          serviceConditions.push(`service IN (${allowedServices.map(() => "?").join(", ")})`);
+          serviceConditions.push(
+            `service IN (${allowedServices.map(() => "?").join(", ")})`
+          );
           serviceParams.push(...allowedServices);
         }
       }
 
-      const baseWhere = serviceConditions.length ? `WHERE ${serviceConditions.join(" AND ")}` : "";
+      const baseWhere = serviceConditions.length
+        ? `WHERE ${serviceConditions.join(" AND ")}`
+        : "";
       let lastId =
-        ((await db.get<{ id: number }>(
-          `SELECT COALESCE(MAX(id), 0) as id FROM logs ${baseWhere}`,
-          serviceParams
-        )) as { id: number } | undefined)?.id ?? 0;
+        (
+          (await db.get<{ id: number }>(
+            `SELECT COALESCE(MAX(id), 0) as id FROM logs ${baseWhere}`,
+            serviceParams
+          )) as { id: number } | undefined
+        )?.id ?? 0;
       let polling = false;
 
       poll = setInterval(() => {

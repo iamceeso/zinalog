@@ -52,10 +52,7 @@ export default async function LogGroupPage({
           <span className="text-[11px] text-(--text-dim) uppercase tracking-[0.5px]">
             Unique {statLabel} Types
           </span>
-          <div
-            className="text-[22px] font-bold mt-0.5"
-            style={{ color }}
-          >
+          <div className="text-[22px] font-bold mt-0.5" style={{ color }}>
             {groups.length}
           </div>
         </div>

@@ -38,7 +38,7 @@ export default function AccessAuditPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [confirmScope, setConfirmScope] = useState<"all" | "expired" | null>(
-    null,
+    null
   );
 
   const fetchAccessAuditData = async () => {
@@ -128,7 +128,7 @@ export default function AccessAuditPage() {
       setMessage(
         data.trimmed
           ? `Saved. Removed ${data.trimmed} expired access audit log${data.trimmed === 1 ? "" : "s"}.`
-          : "Saved access audit settings.",
+          : "Saved access audit settings."
       );
       setTimeout(() => setSaved(false), 2500);
       await reloadData();
@@ -275,7 +275,7 @@ export default function AccessAuditPage() {
                     >
                       {heading}
                     </th>
-                  ),
+                  )
                 )}
               </tr>
             </thead>

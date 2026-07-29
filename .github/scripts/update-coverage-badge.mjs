@@ -4,20 +4,30 @@ import path from "node:path";
 const [, , inputPath, outputPath] = process.argv;
 
 if (!inputPath || !outputPath) {
-  throw new Error("Usage: node update-coverage-badge.mjs <coverage-report> <output-svg>");
+  throw new Error(
+    "Usage: node update-coverage-badge.mjs <coverage-report> <output-svg>"
+  );
 }
 
 const report = await fs.readFile(inputPath, "utf8");
-const match = report.match(/all files\s+\|\s+(\d+\.\d+)\s+\|\s+(\d+\.\d+)\s+\|\s+(\d+\.\d+)/);
+const match = report.match(
+  /all files\s+\|\s+(\d+\.\d+)\s+\|\s+(\d+\.\d+)\s+\|\s+(\d+\.\d+)/
+);
 
 if (!match) {
-  throw new Error("Could not find overall coverage line in test coverage output");
+  throw new Error(
+    "Could not find overall coverage line in test coverage output"
+  );
 }
 
 const lineCoverage = Number.parseFloat(match[1]);
 const branchCoverage = Number.parseFloat(match[2]);
 const functionCoverage = Number.parseFloat(match[3]);
-const overallCoverage = Math.min(lineCoverage, branchCoverage, functionCoverage);
+const overallCoverage = Math.min(
+  lineCoverage,
+  branchCoverage,
+  functionCoverage
+);
 const coverageText = `${overallCoverage.toFixed(2)}%`;
 
 function badgeColor(value) {

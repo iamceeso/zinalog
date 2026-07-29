@@ -1071,7 +1071,7 @@ export default function SettingsPage() {
                                 onChange={(e) =>
                                   set(
                                     "smtp_secure",
-                                    e.target.checked ? "1" : "0",
+                                    e.target.checked ? "1" : "0"
                                   )
                                 }
                                 style={{
@@ -1269,7 +1269,16 @@ export default function SettingsPage() {
                     >
                       <Field
                         label="Webhook URL"
-                        hint={<>Create at api.slack.com/apps <ChevronRight size={11} className="inline align-middle" /> Incoming Webhooks</>}
+                        hint={
+                          <>
+                            Create at api.slack.com/apps{" "}
+                            <ChevronRight
+                              size={11}
+                              className="inline align-middle"
+                            />{" "}
+                            Incoming Webhooks
+                          </>
+                        }
                         required
                       >
                         <input
@@ -1283,9 +1292,22 @@ export default function SettingsPage() {
                         />
                       </Field>
                       <InfoBox>
-                        Go to <strong>api.slack.com/apps</strong> <ChevronRight size={11} className="inline align-middle" /> Create an
-                        app <ChevronRight size={11} className="inline align-middle" /> Incoming Webhooks <ChevronRight size={11} className="inline align-middle" /> Activate and copy the webhook
-                        URL.
+                        Go to <strong>api.slack.com/apps</strong>{" "}
+                        <ChevronRight
+                          size={11}
+                          className="inline align-middle"
+                        />{" "}
+                        Create an app{" "}
+                        <ChevronRight
+                          size={11}
+                          className="inline align-middle"
+                        />{" "}
+                        Incoming Webhooks{" "}
+                        <ChevronRight
+                          size={11}
+                          className="inline align-middle"
+                        />{" "}
+                        Activate and copy the webhook URL.
                       </InfoBox>
                     </div>
                     <SaveBar
@@ -1346,7 +1368,21 @@ export default function SettingsPage() {
                     >
                       <Field
                         label="Webhook URL"
-                        hint={<>Create in Discord channel settings <ChevronRight size={11} className="inline align-middle" /> Integrations <ChevronRight size={11} className="inline align-middle" /> Webhooks</>}
+                        hint={
+                          <>
+                            Create in Discord channel settings{" "}
+                            <ChevronRight
+                              size={11}
+                              className="inline align-middle"
+                            />{" "}
+                            Integrations{" "}
+                            <ChevronRight
+                              size={11}
+                              className="inline align-middle"
+                            />{" "}
+                            Webhooks
+                          </>
+                        }
                         required
                       >
                         <input
@@ -1360,9 +1396,28 @@ export default function SettingsPage() {
                         />
                       </Field>
                       <InfoBox>
-                        In Discord, open a channel <ChevronRight size={11} className="inline align-middle" />{" "}
+                        In Discord, open a channel{" "}
+                        <ChevronRight
+                          size={11}
+                          className="inline align-middle"
+                        />{" "}
                         <strong>
-                          Edit Channel <ChevronRight size={11} className="inline align-middle" /> Integrations <ChevronRight size={11} className="inline align-middle" /> Webhooks <ChevronRight size={11} className="inline align-middle" /> New Webhook
+                          Edit Channel{" "}
+                          <ChevronRight
+                            size={11}
+                            className="inline align-middle"
+                          />{" "}
+                          Integrations{" "}
+                          <ChevronRight
+                            size={11}
+                            className="inline align-middle"
+                          />{" "}
+                          Webhooks{" "}
+                          <ChevronRight
+                            size={11}
+                            className="inline align-middle"
+                          />{" "}
+                          New Webhook
                         </strong>
                         . Copy the webhook URL.
                       </InfoBox>

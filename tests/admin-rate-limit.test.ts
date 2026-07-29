@@ -6,7 +6,10 @@ import { NextRequest } from "next/server";
 
 type AdminRateLimitModule = typeof import("../lib/admin-rate-limit");
 
-const compiledModulePath = path.resolve(__dirname, "../lib/admin-rate-limit.js");
+const compiledModulePath = path.resolve(
+  __dirname,
+  "../lib/admin-rate-limit.js"
+);
 const compiledIpModulePath = path.resolve(__dirname, "../lib/ip.js");
 const cjsRequire = createRequire(import.meta.url);
 
@@ -52,7 +55,9 @@ async function loadAdminRateLimitModule(options?: {
     loaded: true,
     exports: {
       getClientIp: (...args: [NextRequest]) =>
-        globalThis.__zinalogAdminRateLimitTestMocks?.[mockId]?.getClientIp(...args),
+        globalThis.__zinalogAdminRateLimitTestMocks?.[mockId]?.getClientIp(
+          ...args
+        ),
     },
     children: [],
     paths: [],
@@ -67,7 +72,9 @@ async function loadAdminRateLimitModule(options?: {
     mockId,
     previousIpCache,
     previousModuleCache,
-    adminRateLimitModule: cjsRequire(compiledModulePath) as AdminRateLimitModule,
+    adminRateLimitModule: cjsRequire(
+      compiledModulePath
+    ) as AdminRateLimitModule,
   };
 }
 
@@ -91,10 +98,13 @@ async function closeAdminRateLimitModule(
 }
 
 test("checkAdminRateLimit blocks the 31st request in a one-minute window", async (t) => {
-  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
-    getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
-  });
-  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } =
+    await loadAdminRateLimitModule({
+      getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
+    });
+  t.after(async () =>
+    closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache)
+  );
 
   const restoreNow = Date.now;
   Date.now = () => 1_000;
@@ -117,10 +127,13 @@ test("checkAdminRateLimit blocks the 31st request in a one-minute window", async
 });
 
 test("checkAdminRateLimit resets counters after the time window elapses", async (t) => {
-  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
-    getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
-  });
-  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } =
+    await loadAdminRateLimitModule({
+      getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
+    });
+  t.after(async () =>
+    closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache)
+  );
 
   const restoreNow = Date.now;
   let now = 10_000;
@@ -140,10 +153,13 @@ test("checkAdminRateLimit resets counters after the time window elapses", async 
 });
 
 test("checkAdminRateLimit tracks different IPs independently", async (t) => {
-  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
-    getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
-  });
-  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } =
+    await loadAdminRateLimitModule({
+      getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
+    });
+  t.after(async () =>
+    closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache)
+  );
 
   const restoreNow = Date.now;
   Date.now = () => 25_000;
@@ -151,27 +167,37 @@ test("checkAdminRateLimit tracks different IPs independently", async (t) => {
     Date.now = restoreNow;
   });
 
-  const primaryIpRequest = createRequest({ headers: { "x-test-ip": "192.0.2.50" } });
-  const secondaryIpRequest = createRequest({ headers: { "x-test-ip": "192.0.2.51" } });
+  const primaryIpRequest = createRequest({
+    headers: { "x-test-ip": "192.0.2.50" },
+  });
+  const secondaryIpRequest = createRequest({
+    headers: { "x-test-ip": "192.0.2.51" },
+  });
 
   for (let attempt = 0; attempt < 31; attempt += 1) {
     adminRateLimitModule.checkAdminRateLimit(primaryIpRequest);
   }
 
-  assert.equal(adminRateLimitModule.checkAdminRateLimit(secondaryIpRequest), null);
+  assert.equal(
+    adminRateLimitModule.checkAdminRateLimit(secondaryIpRequest),
+    null
+  );
 });
 
 test("checkAdminRateLimit uses getClientIp output when grouping requests", async (t) => {
-  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
-    getClientIp: (request) => {
-      if (request.headers.get("x-forwarded-for")) {
-        return "198.51.100.44";
-      }
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } =
+    await loadAdminRateLimitModule({
+      getClientIp: (request) => {
+        if (request.headers.get("x-forwarded-for")) {
+          return "198.51.100.44";
+        }
 
-      return request.headers.get("x-test-ip") ?? "unknown";
-    },
-  });
-  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
+        return request.headers.get("x-test-ip") ?? "unknown";
+      },
+    });
+  t.after(async () =>
+    closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache)
+  );
 
   const restoreNow = Date.now;
   Date.now = () => 50_000;

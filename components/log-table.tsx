@@ -34,7 +34,7 @@ interface LogTableProps {
   loading?: boolean;
 }
 
-//  Quick preset helpers 
+//  Quick preset helpers
 
 type Preset = "1h" | "24h" | "7d" | "30d" | "custom" | "";
 
@@ -74,7 +74,7 @@ function detectPreset(from: string, to: string): Preset {
   return "custom";
 }
 
-//  Date range picker 
+//  Date range picker
 
 function DateRangePicker({
   from,
@@ -87,13 +87,13 @@ function DateRangePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [localFrom, setLocalFrom] = useState(
-    from ? toLocalDatetimeValue(new Date(from)) : "",
+    from ? toLocalDatetimeValue(new Date(from)) : ""
   );
   const [localTo, setLocalTo] = useState(
-    to ? toLocalDatetimeValue(new Date(to)) : "",
+    to ? toLocalDatetimeValue(new Date(to)) : ""
   );
   const [activePreset, setActivePreset] = useState<Preset>(() =>
-    detectPreset(from, to),
+    detectPreset(from, to)
   );
   const ref = useRef<HTMLDivElement>(null);
 
@@ -126,7 +126,7 @@ function DateRangePicker({
   const applyCustom = () => {
     onChange(
       localFrom ? localToISO(localFrom) : "",
-      localTo ? localToISO(localTo) : "",
+      localTo ? localToISO(localTo) : ""
     );
     setOpen(false);
   };
@@ -147,7 +147,7 @@ function DateRangePicker({
       (p) =>
         p.id === activePreset &&
         activePreset !== "custom" &&
-        activePreset !== "",
+        activePreset !== ""
     );
     if (presetDef) return presetDef.label;
     const parts: string[] = [];
@@ -159,7 +159,7 @@ function DateRangePicker({
           hour: "2-digit",
           minute: "2-digit",
           hour12: false,
-        }),
+        })
       );
     if (to)
       parts.push(
@@ -169,7 +169,7 @@ function DateRangePicker({
           hour: "2-digit",
           minute: "2-digit",
           hour12: false,
-        }),
+        })
       );
     return parts.join(" → ") || "Date range";
   })();
@@ -310,7 +310,7 @@ function DateRangePicker({
   );
 }
 
-//  Utilities 
+//  Utilities
 
 function formatTime(dt: string): string {
   const d = new Date(dt + (dt.endsWith("Z") ? "" : "Z"));
@@ -324,7 +324,7 @@ function formatTime(dt: string): string {
   });
 }
 
-//  Log detail panel 
+//  Log detail panel
 
 function LogDetailPanel({ log, onClose }: { log: Log; onClose: () => void }) {
   let meta: unknown = null;
@@ -408,7 +408,7 @@ function LogDetailPanel({ log, onClose }: { log: Log; onClose: () => void }) {
   );
 }
 
-//  Main table 
+//  Main table
 
 export default function LogTable({
   logs,
@@ -429,20 +429,27 @@ export default function LogTable({
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) =>
       onFilterChange("search", e.target.value),
-    [onFilterChange],
+    [onFilterChange]
   );
 
   const handleDateRange = useCallback(
     (from: string, to: string) => {
       onDateRangeChange(from, to);
     },
-    [onDateRangeChange],
+    [onDateRangeChange]
   );
 
   const hasDateFilter = !!(filters.from || filters.to);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+      }}
+    >
       {/* ── Filter bar ── */}
 
       <div className="flex gap-2 py-3 flex-wrap items-center shrink-0">
@@ -531,7 +538,9 @@ export default function LogTable({
             </span>
           )}
           {filters.from && filters.to && (
-            <span className="text-(--text-dim)"><ArrowRight size={12} /></span>
+            <span className="text-(--text-dim)">
+              <ArrowRight size={12} />
+            </span>
           )}
           {filters.to && (
             <span>
@@ -552,9 +561,7 @@ export default function LogTable({
           </div>
         ) : logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-50 gap-2">
-            <span className="text-[14px] text-(--text-dim)">
-              No logs found
-            </span>
+            <span className="text-[14px] text-(--text-dim)">No logs found</span>
             {(filters.level !== "all" ||
               filters.service !== "all" ||
               filters.search ||
@@ -626,7 +633,9 @@ export default function LogTable({
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
               className={`bg-(--bg-card) border border-(--border) rounded-md px-2 py-1.5 flex items-center ${
-                page <= 1 ? "text-(--text-dim) cursor-not-allowed opacity-50" : "text-foreground cursor-pointer hover:bg-(--bg-hover)"
+                page <= 1
+                  ? "text-(--text-dim) cursor-not-allowed opacity-50"
+                  : "text-foreground cursor-pointer hover:bg-(--bg-hover)"
               }`}
             >
               <ChevronLeft size={14} />
@@ -638,13 +647,23 @@ export default function LogTable({
               } else {
                 pages.push(1);
                 if (page > 3) pages.push("…");
-                for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+                for (
+                  let i = Math.max(2, page - 1);
+                  i <= Math.min(totalPages - 1, page + 1);
+                  i++
+                )
+                  pages.push(i);
                 if (page < totalPages - 2) pages.push("…");
                 pages.push(totalPages);
               }
               return pages.map((p, i) =>
                 p === "…" ? (
-                  <span key={`ellipsis-${i}`} className="px-1.5 text-[12px] text-(--text-dim)">…</span>
+                  <span
+                    key={`ellipsis-${i}`}
+                    className="px-1.5 text-[12px] text-(--text-dim)"
+                  >
+                    …
+                  </span>
                 ) : (
                   <button
                     key={p}
@@ -664,7 +683,9 @@ export default function LogTable({
               disabled={page >= totalPages}
               onClick={() => onPageChange(page + 1)}
               className={`bg-(--bg-card) border border-(--border) rounded-md px-2 py-1.5 flex items-center ${
-                page >= totalPages ? "text-(--text-dim) cursor-not-allowed opacity-50" : "text-foreground cursor-pointer hover:bg-(--bg-hover)"
+                page >= totalPages
+                  ? "text-(--text-dim) cursor-not-allowed opacity-50"
+                  : "text-foreground cursor-pointer hover:bg-(--bg-hover)"
               }`}
             >
               <ChevronRight size={14} />

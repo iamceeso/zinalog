@@ -49,23 +49,25 @@ const MASKED_VALUES: Record<string, string> = {
 export function maskAlertSettingValue(key: string, value: string): string {
   if (!value) return value;
   if (key === "resend_api_key") return "re_********************";
-  if (key === "telegram_bot_token") return "********************:********************";
+  if (key === "telegram_bot_token")
+    return "********************:********************";
   if (MASKED_VALUES[key]) return MASKED_VALUES[key];
   return value;
 }
 
 export function isMaskedAlertSettingValue(key: string, value: string): boolean {
   if (key === "resend_api_key") return value === "re_********************";
-  if (key === "telegram_bot_token") return value === "********************:********************";
+  if (key === "telegram_bot_token")
+    return value === "********************:********************";
   if (MASKED_VALUES[key]) return value === MASKED_VALUES[key];
   return false;
 }
 
 export function sanitizeAlertSettingsForClient(
-  settings: Record<string, string>,
+  settings: Record<string, string>
 ): Record<string, string> {
   const sanitized = Object.fromEntries(
-    ALL_ALERT_SETTING_KEYS.map((key) => [key, settings[key] ?? ""]),
+    ALL_ALERT_SETTING_KEYS.map((key) => [key, settings[key] ?? ""])
   );
 
   for (const key of SENSITIVE_ALERT_SETTING_KEYS) {

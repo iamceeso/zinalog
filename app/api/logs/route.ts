@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiKey } from "@/lib/auth";
-import { insertLog, queryLogs, getAllSettings, checkAndSetCooldown, countRecentLogs } from "@/lib/db";
+import {
+  insertLog,
+  queryLogs,
+  getAllSettings,
+  checkAndSetCooldown,
+  countRecentLogs,
+} from "@/lib/db";
 import { sendAllNotifications } from "@/lib/notifications";
 import { requireApiUser } from "@/lib/session-auth";
 
@@ -115,7 +121,9 @@ async function triggerAlertIfNeeded(log: {
   created_at: string;
 }) {
   const s = await getAllSettings();
-  const alertLevels = (s.alert_levels ?? "error").split(",").map((l) => l.trim());
+  const alertLevels = (s.alert_levels ?? "error")
+    .split(",")
+    .map((l) => l.trim());
   if (!alertLevels.includes(log.level)) return;
 
   const threshold = parseInt(s.alert_threshold ?? "1", 10);
@@ -143,7 +151,9 @@ export async function GET(req: NextRequest) {
     from: searchParams.get("from") ?? undefined,
     to: searchParams.get("to") ?? undefined,
     page: parsePositiveIntegerParam(searchParams.get("page"), 1),
-    limit: parsePositiveIntegerParam(searchParams.get("limit"), 50, { max: 200 }),
+    limit: parsePositiveIntegerParam(searchParams.get("limit"), 50, {
+      max: 200,
+    }),
   };
 
   const { logs, total } = await queryLogs(filters, auth.user.allowed_services);

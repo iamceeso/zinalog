@@ -21,7 +21,7 @@ export function toCSV(logs: Log[]): string {
   const escape = (value: unknown) =>
     `"${sanitizeCsvCell(value).replace(/"/g, '""')}"`;
   const rows = logs.map((log) =>
-    headers.map((header) => escape(log[header as keyof Log])).join(","),
+    headers.map((header) => escape(log[header as keyof Log])).join(",")
   );
   return [headers.join(","), ...rows].join("\n");
 }

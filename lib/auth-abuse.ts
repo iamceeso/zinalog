@@ -10,7 +10,11 @@ type Entry = {
 
 const store = new Map<string, Entry>();
 
-function registerAttempt(key: string, limit: number, windowMs: number): boolean {
+function registerAttempt(
+  key: string,
+  limit: number,
+  windowMs: number
+): boolean {
   const now = Date.now();
   const entry = store.get(key);
 
@@ -35,15 +39,19 @@ function normalizeUsername(username: string): string {
 
 export function consumeLoginAttempt(
   ipAddress: string,
-  username: string,
+  username: string
 ): boolean {
   const normalizedUsername = normalizeUsername(username);
   return (
-    registerAttempt(`login:ip:${ipAddress}`, LOGIN_ATTEMPT_LIMIT, LOGIN_WINDOW_MS) &&
+    registerAttempt(
+      `login:ip:${ipAddress}`,
+      LOGIN_ATTEMPT_LIMIT,
+      LOGIN_WINDOW_MS
+    ) &&
     registerAttempt(
       `login:user:${normalizedUsername}`,
       LOGIN_ATTEMPT_LIMIT,
-      LOGIN_WINDOW_MS,
+      LOGIN_WINDOW_MS
     )
   );
 }
@@ -54,21 +62,21 @@ export function clearLoginAttempts(ipAddress: string, username: string): void {
 
 export function consumeMfaAttempt(
   ipAddress: string,
-  challengeTokenHash: string,
+  challengeTokenHash: string
 ): boolean {
   return (
     registerAttempt(`mfa:ip:${ipAddress}`, MFA_ATTEMPT_LIMIT, MFA_WINDOW_MS) &&
     registerAttempt(
       `mfa:challenge:${challengeTokenHash}`,
       MFA_ATTEMPT_LIMIT,
-      MFA_WINDOW_MS,
+      MFA_WINDOW_MS
     )
   );
 }
 
 export function clearMfaAttempts(
   ipAddress: string,
-  challengeTokenHash: string,
+  challengeTokenHash: string
 ): void {
   clear([`mfa:ip:${ipAddress}`, `mfa:challenge:${challengeTokenHash}`]);
 }

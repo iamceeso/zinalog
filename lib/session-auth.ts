@@ -179,7 +179,9 @@ function ensureValidEmail(email: string): string {
   return normalized;
 }
 
-function normalizeManagedUserAllowedServices(input: unknown): string[] | null | undefined {
+function normalizeManagedUserAllowedServices(
+  input: unknown
+): string[] | null | undefined {
   if (input === undefined) {
     return undefined;
   }
@@ -189,19 +191,25 @@ function normalizeManagedUserAllowedServices(input: unknown): string[] | null | 
   }
 
   if (!Array.isArray(input)) {
-    throw new Error("Field 'allowed_services' must be an array of service names or null");
+    throw new Error(
+      "Field 'allowed_services' must be an array of service names or null"
+    );
   }
 
   const normalized = Array.from(
     new Set(
       input.map((value) => {
         if (typeof value !== "string") {
-          throw new Error("Field 'allowed_services' must only contain service names");
+          throw new Error(
+            "Field 'allowed_services' must only contain service names"
+          );
         }
 
         const trimmed = value.trim();
         if (!trimmed) {
-          throw new Error("Field 'allowed_services' must not contain empty service names");
+          throw new Error(
+            "Field 'allowed_services' must not contain empty service names"
+          );
         }
 
         return trimmed;
@@ -242,7 +250,10 @@ function generateMfaCode(): string {
   return String(randomBytes(4).readUInt32BE(0) % 1000000).padStart(6, "0");
 }
 
-async function setSessionCookie(response: NextResponse, userId: number): Promise<void> {
+async function setSessionCookie(
+  response: NextResponse,
+  userId: number
+): Promise<void> {
   const idleTimeoutMinutes = await getSessionIdleTimeoutMinutes();
   const sessionToken = randomBytes(32).toString("hex");
   const sessionExpires = buildCookieExpiry(idleTimeoutMinutes * 60 * 1000);
@@ -267,7 +278,11 @@ function clearPreAuthCookie(response: NextResponse): void {
   });
 }
 
-function setPreAuthCookie(response: NextResponse, token: string, expiresAt: string): void {
+function setPreAuthCookie(
+  response: NextResponse,
+  token: string,
+  expiresAt: string
+): void {
   response.cookies.set({
     ...getPreAuthCookieOptions(new Date(expiresAt)),
     value: token,
@@ -280,7 +295,8 @@ function buildAuditDetails(details?: Record<string, unknown>): string | null {
 
 async function auditUserEvent(input: {
   actor?: Pick<UserSummary, "id" | "username"> | null;
-  subject?: Pick<UserSummary, "id" | "username"> | Pick<User, "id" | "username"> | null;
+  subject?:
+    Pick<UserSummary, "id" | "username"> | Pick<User, "id" | "username"> | null;
   action: string;
   resource?: string | null;
   ipAddress?: string | null;
@@ -300,12 +316,17 @@ async function auditUserEvent(input: {
   });
 }
 
-async function issuePreAuthChallenge(user: User, purpose: "password_change" | "mfa", code?: string) {
+async function issuePreAuthChallenge(
+  user: User,
+  purpose: "password_change" | "mfa",
+  code?: string
+) {
   await deleteAuthChallengesForUser(user.id);
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(
-    Date.now() + (purpose === "password_change" ? TEMP_PASSWORD_TTL_MS : MFA_TTL_MS)
+    Date.now() +
+      (purpose === "password_change" ? TEMP_PASSWORD_TTL_MS : MFA_TTL_MS)
   ).toISOString();
 
   await createAuthChallenge({
@@ -319,9 +340,14 @@ async function issuePreAuthChallenge(user: User, purpose: "password_change" | "m
   return { token, expiresAt };
 }
 
-async function issueMfaChallenge(user: User, req: NextRequest): Promise<NextResponse> {
+async function issueMfaChallenge(
+  user: User,
+  req: NextRequest
+): Promise<NextResponse> {
   if (!user.email) {
-    throw new Error("This account cannot use MFA until an email address is configured");
+    throw new Error(
+      "This account cannot use MFA until an email address is configured"
+    );
   }
 
   const code = generateMfaCode();
@@ -374,7 +400,10 @@ async function getPreAuthContext(purpose: "password_change" | "mfa") {
   return { tokenHash, challenge, user };
 }
 
-export async function buildLoginResponse(user: User, req?: NextRequest): Promise<NextResponse> {
+export async function buildLoginResponse(
+  user: User,
+  req?: NextRequest
+): Promise<NextResponse> {
   await touchUserLogin(user.id);
   const freshUser = (await getUserById(user.id)) ?? user;
   const response = NextResponse.json({
@@ -413,7 +442,9 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   return getCurrentUserFromSession();
 }
 
-export async function requireUser(minimumRole: UserRole = "viewer"): Promise<SessionUser> {
+export async function requireUser(
+  minimumRole: UserRole = "viewer"
+): Promise<SessionUser> {
   const user = await getCurrentUserFromSession();
   if (!user) {
     redirect("/login");
@@ -429,14 +460,16 @@ export async function requireUser(minimumRole: UserRole = "viewer"): Promise<Ses
 export async function requireApiUser(
   minimumRole: UserRole = "viewer"
 ): Promise<
-  | { ok: true; user: SessionUser }
-  | { ok: false; response: NextResponse }
+  { ok: true; user: SessionUser } | { ok: false; response: NextResponse }
 > {
   const user = await getCurrentUserFromSession();
   if (!user) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+      response: NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      ),
     };
   }
 
@@ -492,13 +525,17 @@ export async function beginSignInWithPassword(
     });
     return NextResponse.json(
       { error: "Too many login attempts. Try again later." },
-      { status: 429 },
+      { status: 429 }
     );
   }
 
   const user = await getUserByUsername(username);
 
-  if (!user || !user.is_active || !verifyPassword(input.password, user.password_hash)) {
+  if (
+    !user ||
+    !user.is_active ||
+    !verifyPassword(input.password, user.password_hash)
+  ) {
     await auditUserEvent({
       action: "login_failed",
       resource: "auth/login",
@@ -512,7 +549,9 @@ export async function beginSignInWithPassword(
   clearLoginAttempts(ipAddress, username);
 
   if (user.password_is_temporary) {
-    const expiresAt = user.password_expires_at ? new Date(user.password_expires_at).getTime() : 0;
+    const expiresAt = user.password_expires_at
+      ? new Date(user.password_expires_at).getTime()
+      : 0;
     if (!expiresAt || expiresAt <= Date.now()) {
       await auditUserEvent({
         actor: user,
@@ -523,7 +562,10 @@ export async function beginSignInWithPassword(
         userAgent,
       });
       return NextResponse.json(
-        { error: "Temporary password has expired. Ask an admin to send a new one." },
+        {
+          error:
+            "Temporary password has expired. Ask an admin to send a new one.",
+        },
         { status: 401 }
       );
     }
@@ -623,7 +665,7 @@ export async function verifyMfaCode(
     });
     return NextResponse.json(
       { error: "Too many verification attempts. Sign in again." },
-      { status: 429 },
+      { status: 429 }
     );
   }
 
@@ -636,7 +678,10 @@ export async function verifyMfaCode(
       ipAddress,
       userAgent,
     });
-    return NextResponse.json({ error: "Invalid verification code" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid verification code" },
+      { status: 401 }
+    );
   }
 
   clearMfaAttempts(ipAddress, context.tokenHash);
@@ -652,7 +697,9 @@ export async function verifyMfaCode(
   return buildLoginResponse(context.user, req);
 }
 
-export async function buildLogoutResponse(req?: NextRequest): Promise<NextResponse> {
+export async function buildLogoutResponse(
+  req?: NextRequest
+): Promise<NextResponse> {
   const sessionToken = await getSessionTokenFromCookies();
   const currentUser = await getCurrentUserFromSession();
   if (sessionToken) {
@@ -685,7 +732,10 @@ export function getRoleOptions(): UserRole[] {
   return ["viewer", "operator", "admin"];
 }
 
-export function canManageRole(actorRole: UserRole, targetRole: UserRole): boolean {
+export function canManageRole(
+  actorRole: UserRole,
+  targetRole: UserRole
+): boolean {
   return hasRole(actorRole, targetRole);
 }
 
@@ -693,7 +743,10 @@ export function canAccessUserManagement(actorRole: UserRole): boolean {
   return actorRole === "admin" || actorRole === "operator";
 }
 
-export function canManageUserTarget(actorRole: UserRole, targetRole: UserRole): boolean {
+export function canManageUserTarget(
+  actorRole: UserRole,
+  targetRole: UserRole
+): boolean {
   if (actorRole === "admin") return true;
   if (actorRole === "operator") return targetRole !== "admin";
   return false;
@@ -718,7 +771,9 @@ export async function createManagedUser(input: {
 }): Promise<UserSummary> {
   ensureValidUsername(input.username);
   const email = ensureValidEmail(input.email);
-  const allowedServices = normalizeManagedUserAllowedServices(input.allowed_services);
+  const allowedServices = normalizeManagedUserAllowedServices(
+    input.allowed_services
+  );
 
   const temporaryPassword = generateTemporaryPassword();
   const expiresAt = new Date(Date.now() + TEMP_PASSWORD_TTL_MS).toISOString();
@@ -815,7 +870,8 @@ export async function updateManagedUserServiceAccess(
   const user = await getUserById(id);
   if (!user) return false;
 
-  const allowedServices = normalizeManagedUserAllowedServices(allowedServicesInput);
+  const allowedServices =
+    normalizeManagedUserAllowedServices(allowedServicesInput);
   if (allowedServices === undefined) {
     throw new Error("Field 'allowed_services' is required");
   }
@@ -845,7 +901,9 @@ export async function updateManagedUserMfa(
   const user = await getUserById(id);
   if (!user) return false;
   if (enabled && !user.email) {
-    throw new Error("User must have an email address before MFA can be enabled");
+    throw new Error(
+      "User must have an email address before MFA can be enabled"
+    );
   }
 
   const changed = await updateUserMfaEnabled(id, enabled);
@@ -855,7 +913,10 @@ export async function updateManagedUserMfa(
       subject: user,
       action: "user_mfa_changed",
       resource: "users/update",
-      details: { previous_mfa_enabled: !!user.mfa_enabled, mfa_enabled: enabled },
+      details: {
+        previous_mfa_enabled: !!user.mfa_enabled,
+        mfa_enabled: enabled,
+      },
     });
   }
   return changed;
@@ -895,7 +956,9 @@ export async function sendManagedUserPasswordReset(input: {
     return false;
   }
   if (!user.email) {
-    throw new Error("User must have an email address before a reset email can be sent");
+    throw new Error(
+      "User must have an email address before a reset email can be sent"
+    );
   }
 
   const temporaryPassword = generateTemporaryPassword();
@@ -964,7 +1027,10 @@ export async function updateManagedUserActive(
   return success;
 }
 
-export async function deleteManagedUser(id: number, actor?: SessionUser): Promise<boolean> {
+export async function deleteManagedUser(
+  id: number,
+  actor?: SessionUser
+): Promise<boolean> {
   const user = await getUserById(id);
   if (!user) return false;
   if (user.role === "admin" && (await countAdmins()) <= 1) {

@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendTestNotification, Channel } from "@/lib/notifications";
 import { requireApiUser } from "@/lib/session-auth";
 
-const VALID_CHANNELS: Channel[] = ["email", "telegram", "slack", "discord", "webhook"];
+const VALID_CHANNELS: Channel[] = [
+  "email",
+  "telegram",
+  "slack",
+  "discord",
+  "webhook",
+];
 
 export async function POST(req: NextRequest) {
   const auth = await requireApiUser("admin");
@@ -12,7 +18,12 @@ export async function POST(req: NextRequest) {
   const channel = (searchParams.get("channel") ?? "email") as Channel;
 
   if (!VALID_CHANNELS.includes(channel)) {
-    return NextResponse.json({ error: `Invalid channel. Must be one of: ${VALID_CHANNELS.join(", ")}` }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Invalid channel. Must be one of: ${VALID_CHANNELS.join(", ")}`,
+      },
+      { status: 400 }
+    );
   }
 
   const result = await sendTestNotification(channel);

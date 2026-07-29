@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAlertEmail, buildMfaEmail, buildUserInviteEmail } from "../lib/email";
+import {
+  buildAlertEmail,
+  buildMfaEmail,
+  buildUserInviteEmail,
+} from "../lib/email";
 
 test("buildAlertEmail includes service, stack, and parsed metadata", () => {
   const { subject, html } = buildAlertEmail({
@@ -32,7 +36,10 @@ test("buildAlertEmail skips metadata blocks when metadata is not valid JSON", ()
   });
 
   assert.doesNotMatch(html, /Metadata/);
-  assert.doesNotMatch(html, /<pre style="margin:0;background:#0d1117.*Retry queue/s);
+  assert.doesNotMatch(
+    html,
+    /<pre style="margin:0;background:#0d1117.*Retry queue/s
+  );
 });
 
 test("buildAlertEmail falls back for unknown levels without truncating short subjects", () => {

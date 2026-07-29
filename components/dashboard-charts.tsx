@@ -94,7 +94,7 @@ export function ActivityChart({
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([hour, counts]) => ({
       label: new Date(
-        hour + (hour.endsWith("Z") ? "" : "Z"),
+        hour + (hour.endsWith("Z") ? "" : "Z")
       ).toLocaleTimeString("en-US", {
         hour: "numeric",
         hour12: true,
@@ -296,7 +296,16 @@ function formatTime(dt: string): string {
 
 export function RecentErrorsList({ errors }: { errors: Log[] }) {
   if (errors.length === 0) {
-    return <Empty text={<>No recent errors <PartyPopper size={14} className="inline align-middle" /></>} />;
+    return (
+      <Empty
+        text={
+          <>
+            No recent errors{" "}
+            <PartyPopper size={14} className="inline align-middle" />
+          </>
+        }
+      />
+    );
   }
   return (
     <div className="flex flex-col divide-y divide-(--border)">

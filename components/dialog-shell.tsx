@@ -38,7 +38,9 @@ export default function DialogShell({
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="text-[16px] font-bold text-foreground m-0">{title}</h2>
+              <h2 className="text-[16px] font-bold text-foreground m-0">
+                {title}
+              </h2>
               {description && (
                 <p className="text-[13px] text-(--text-muted) leading-[1.6] mt-2 mb-0">
                   {description}

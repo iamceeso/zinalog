@@ -27,7 +27,8 @@ export async function GET() {
   return NextResponse.json({
     retention_days: (await getSetting("retention_days")) ?? "30",
     max_logs: (await getSetting("max_logs")) ?? "100000",
-    session_idle_timeout_minutes: (await getSetting("session_idle_timeout_minutes")) ?? "30",
+    session_idle_timeout_minutes:
+      (await getSetting("session_idle_timeout_minutes")) ?? "30",
   });
 }
 
@@ -52,7 +53,12 @@ export async function POST(req: NextRequest) {
       );
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid retention_days value" },
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid retention_days value",
+        },
         { status: 400 }
       );
     }
@@ -64,7 +70,10 @@ export async function POST(req: NextRequest) {
       trimmed = await trimLogsToMax(maxLogs);
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid max_logs value" },
+        {
+          error:
+            error instanceof Error ? error.message : "Invalid max_logs value",
+        },
         { status: 400 }
       );
     }
@@ -73,7 +82,12 @@ export async function POST(req: NextRequest) {
     try {
       await setSetting(
         "session_idle_timeout_minutes",
-        String(parsePositiveInt(body.session_idle_timeout_minutes, "session_idle_timeout_minutes"))
+        String(
+          parsePositiveInt(
+            body.session_idle_timeout_minutes,
+            "session_idle_timeout_minutes"
+          )
+        )
       );
     } catch (error) {
       return NextResponse.json(

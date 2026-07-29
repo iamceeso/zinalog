@@ -39,7 +39,9 @@ export async function PATCH(
   }
 
   try {
-    const targetUser = (await listManagedUsers()).find((user) => user.id === userId);
+    const targetUser = (await listManagedUsers()).find(
+      (user) => user.id === userId
+    );
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -56,7 +58,10 @@ export async function PATCH(
 
     if (body.role !== undefined) {
       if (!isAdmin) {
-        return NextResponse.json({ error: "Admin access is required to change roles" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Admin access is required to change roles" },
+          { status: 403 }
+        );
       }
       const role = typeof body.role === "string" ? body.role : "";
       if (!roles.includes(role as "admin" | "operator" | "viewer")) {
@@ -67,25 +72,37 @@ export async function PATCH(
           userId,
           role as "admin" | "operator" | "viewer",
           auth.user
-        )) ||
-        changed;
+        )) || changed;
     }
 
     if (body.is_active !== undefined) {
       if (!isAdmin) {
-        return NextResponse.json({ error: "Admin access is required to change status" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Admin access is required to change status" },
+          { status: 403 }
+        );
       }
       if (typeof body.is_active !== "boolean") {
-        return NextResponse.json({ error: "Field 'is_active' must be boolean" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Field 'is_active' must be boolean" },
+          { status: 400 }
+        );
       }
-      changed = (await updateManagedUserActive(userId, body.is_active, auth.user)) || changed;
+      changed =
+        (await updateManagedUserActive(userId, body.is_active, auth.user)) ||
+        changed;
     }
 
     if (body.email !== undefined) {
       if (typeof body.email !== "string" || !body.email.trim()) {
-        return NextResponse.json({ error: "Field 'email' must be a non-empty string" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Field 'email' must be a non-empty string" },
+          { status: 400 }
+        );
       }
-      changed = (await updateManagedUserEmail(userId, body.email, auth.user)) || changed;
+      changed =
+        (await updateManagedUserEmail(userId, body.email, auth.user)) ||
+        changed;
     }
 
     if (body.allowed_services !== undefined) {
@@ -96,8 +113,11 @@ export async function PATCH(
         );
       }
       changed =
-        (await updateManagedUserServiceAccess(userId, body.allowed_services, auth.user)) ||
-        changed;
+        (await updateManagedUserServiceAccess(
+          userId,
+          body.allowed_services,
+          auth.user
+        )) || changed;
     }
 
     if (body.mfa_enabled !== undefined) {
@@ -113,7 +133,9 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      changed = (await updateManagedUserMfa(userId, body.mfa_enabled, auth.user)) || changed;
+      changed =
+        (await updateManagedUserMfa(userId, body.mfa_enabled, auth.user)) ||
+        changed;
     }
 
     if (body.password !== undefined) {
@@ -124,9 +146,14 @@ export async function PATCH(
         );
       }
       if (typeof body.password !== "string" || !body.password) {
-        return NextResponse.json({ error: "Field 'password' must be a non-empty string" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Field 'password' must be a non-empty string" },
+          { status: 400 }
+        );
       }
-      changed = (await updateManagedUserPassword(userId, body.password, auth.user)) || changed;
+      changed =
+        (await updateManagedUserPassword(userId, body.password, auth.user)) ||
+        changed;
     }
 
     if (body.send_reset_email !== undefined) {
@@ -136,7 +163,10 @@ export async function PATCH(
           { status: 403 }
         );
       }
-      if (typeof body.send_reset_email !== "boolean" || !body.send_reset_email) {
+      if (
+        typeof body.send_reset_email !== "boolean" ||
+        !body.send_reset_email
+      ) {
         return NextResponse.json(
           { error: "Field 'send_reset_email' must be true when provided" },
           { status: 400 }
@@ -151,13 +181,18 @@ export async function PATCH(
     }
 
     if (!changed) {
-      return NextResponse.json({ error: "No changes applied" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No changes applied" },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ status: "updated" });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update user" },
+      {
+        error: error instanceof Error ? error.message : "Failed to update user",
+      },
       { status: 400 }
     );
   }
@@ -180,7 +215,9 @@ export async function DELETE(
   }
 
   try {
-    const targetUser = (await listManagedUsers()).find((user) => user.id === userId);
+    const targetUser = (await listManagedUsers()).find(
+      (user) => user.id === userId
+    );
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -199,7 +236,9 @@ export async function DELETE(
     return NextResponse.json({ status: "deleted" });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete user" },
+      {
+        error: error instanceof Error ? error.message : "Failed to delete user",
+      },
       { status: 400 }
     );
   }

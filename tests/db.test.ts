@@ -40,7 +40,7 @@ async function closeAndCleanup(
   dbModule: DbModule,
   previousNodeEnv: string | undefined,
   previousDatabasePath: string | undefined,
-  previousEncryptionKey: string | undefined,
+  previousEncryptionKey: string | undefined
 ) {
   const db = await dbModule.getDb();
   await db.close();
@@ -65,10 +65,21 @@ async function closeAndCleanup(
 }
 
 test("initializes the async SQLite database with default settings", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   assert.equal(await dbModule.getSetting("retention_days"), "30");
@@ -82,10 +93,21 @@ test("initializes the async SQLite database with default settings", async (t) =>
 });
 
 test("writes, filters, and trims logs asynchronously", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   await dbModule.setSetting("max_logs", "2");
@@ -108,9 +130,18 @@ test("writes, filters, and trims logs asynchronously", async (t) => {
 
   const allLogs = await dbModule.exportLogs();
   assert.equal(allLogs.length, 2);
-  assert.equal(allLogs.some((log) => log.message === "first message"), false);
-  assert.equal(allLogs.some((log) => log.message === "second message"), true);
-  assert.equal(allLogs.some((log) => log.message === "third message"), true);
+  assert.equal(
+    allLogs.some((log) => log.message === "first message"),
+    false
+  );
+  assert.equal(
+    allLogs.some((log) => log.message === "second message"),
+    true
+  );
+  assert.equal(
+    allLogs.some((log) => log.message === "third message"),
+    true
+  );
 
   const filtered = await dbModule.queryLogs({
     service: "worker",
@@ -144,14 +175,27 @@ test("writes, filters, and trims logs asynchronously", async (t) => {
   const restrictedStats = await dbModule.getStats(["worker"]);
   assert.equal(restrictedStats.total, 1);
   assert.equal(restrictedStats.services, 1);
-  assert.deepEqual(restrictedStats.byService, [{ service: "worker", count: 1 }]);
+  assert.deepEqual(restrictedStats.byService, [
+    { service: "worker", count: 1 },
+  ]);
 });
 
 test("creates, touches, revokes, and deletes API keys asynchronously", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   const rawKey = "zinalog_test_key_123";
@@ -170,7 +214,9 @@ test("creates, touches, revokes, and deletes API keys asynchronously", async (t)
   assert.notEqual(resolved?.key_hash, rawKey);
 
   await dbModule.touchApiKey(created.id);
-  const touched = (await dbModule.listApiKeys()).find((key) => key.id === created.id);
+  const touched = (await dbModule.listApiKeys()).find(
+    (key) => key.id === created.id
+  );
   assert.equal(touched?.usage_count, 1);
   assert.ok(touched?.last_used_at);
 
@@ -181,10 +227,21 @@ test("creates, touches, revokes, and deletes API keys asynchronously", async (t)
 });
 
 test("supports async user, session, challenge, and audit operations", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   const user = await dbModule.createUser({
@@ -215,7 +272,9 @@ test("supports async user, session, challenge, and audit operations", async (t) 
   assert.deepEqual(sessionUser?.allowed_services, ["api", "worker"]);
 
   await dbModule.touchAuthSession("session-hash", 45);
-  const refreshedSession = await (await dbModule.getDb()).get<{
+  const refreshedSession = await (
+    await dbModule.getDb()
+  ).get<{
     ttlSeconds: number;
     lastSeenAt: string;
   }>(
@@ -243,7 +302,8 @@ test("supports async user, session, challenge, and audit operations", async (t) 
   });
   assert.equal(challenge.user_id, user.id);
   assert.equal(
-    (await dbModule.getAuthChallengeByTokenHash("challenge-hash", "mfa"))?.token_hash,
+    (await dbModule.getAuthChallengeByTokenHash("challenge-hash", "mfa"))
+      ?.token_hash,
     "challenge-hash"
   );
 
@@ -270,10 +330,21 @@ test("supports async user, session, challenge, and audit operations", async (t) 
 });
 
 test("creates the initial admin only once", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   const created = await dbModule.createInitialAdminUser({
@@ -296,10 +367,21 @@ test("creates the initial admin only once", async (t) => {
 });
 
 test("groups logs, counts recent activity, and deletes retained logs", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   const oldestId = await dbModule.insertLog({
@@ -324,9 +406,16 @@ test("groups logs, counts recent activity, and deletes retained logs", async (t)
   });
 
   const db = await dbModule.getDb();
-  await db.run("UPDATE logs SET created_at = datetime('now', '-10 days') WHERE id = ?", [oldestId]);
+  await db.run(
+    "UPDATE logs SET created_at = datetime('now', '-10 days') WHERE id = ?",
+    [oldestId]
+  );
 
-  const recentBillingErrors = await dbModule.countRecentLogs("error", "billing-api", 60);
+  const recentBillingErrors = await dbModule.countRecentLogs(
+    "error",
+    "billing-api",
+    60
+  );
   assert.equal(recentBillingErrors, 1);
 
   const recentGlobalErrors = await dbModule.countRecentLogs("error", null, 60);
@@ -359,14 +448,28 @@ test("groups logs, counts recent activity, and deletes retained logs", async (t)
 
   const remainingLogs = await dbModule.exportLogs();
   assert.equal(remainingLogs.length, 3);
-  assert.equal(remainingLogs.some((log) => log.id === oldestId), false);
+  assert.equal(
+    remainingLogs.some((log) => log.id === oldestId),
+    false
+  );
 });
 
 test("applies settings fallbacks and cleans up auth records", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   await dbModule.setSettings({
@@ -429,13 +532,27 @@ test("applies settings fallbacks and cleans up auth records", async (t) => {
     expires_at: new Date(Date.now() - 60_000).toISOString(),
   });
 
-  assert.equal((await dbModule.getUserBySessionTokenHash(activeSession.token_hash))?.id, user.id);
-  assert.equal(await dbModule.getUserBySessionTokenHash("expired-session-hash"), null);
   assert.equal(
-    (await dbModule.getAuthChallengeByTokenHash(activeChallenge.token_hash, "mfa"))?.id,
+    (await dbModule.getUserBySessionTokenHash(activeSession.token_hash))?.id,
+    user.id
+  );
+  assert.equal(
+    await dbModule.getUserBySessionTokenHash("expired-session-hash"),
+    null
+  );
+  assert.equal(
+    (
+      await dbModule.getAuthChallengeByTokenHash(
+        activeChallenge.token_hash,
+        "mfa"
+      )
+    )?.id,
     activeChallenge.id
   );
-  assert.equal(await dbModule.getAuthChallengeByTokenHash("expired-challenge-hash", "mfa"), null);
+  assert.equal(
+    await dbModule.getAuthChallengeByTokenHash("expired-challenge-hash", "mfa"),
+    null
+  );
 
   assert.equal(await dbModule.cleanupExpiredAuthSessions(), 1);
   assert.equal(await dbModule.cleanupExpiredAuthChallenges(), 1);
@@ -450,7 +567,10 @@ test("applies settings fallbacks and cleans up auth records", async (t) => {
        (SELECT COUNT(*) FROM auth_challenges WHERE user_id = ?) as challengeCount`,
     [user.id, user.id]
   ))!;
-  assert.deepEqual(authRowsBeforeDelete, { sessionCount: 1, challengeCount: 1 });
+  assert.deepEqual(authRowsBeforeDelete, {
+    sessionCount: 1,
+    challengeCount: 1,
+  });
 
   assert.equal(await dbModule.deleteUser(user.id), true);
 
@@ -468,14 +588,28 @@ test("applies settings fallbacks and cleans up auth records", async (t) => {
 });
 
 test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
-  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
-    await loadDbModule();
+  const {
+    tempDir,
+    dbModule,
+    previousNodeEnv,
+    previousDatabasePath,
+    previousEncryptionKey,
+  } = await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(
+      tempDir,
+      dbModule,
+      previousNodeEnv,
+      previousDatabasePath,
+      previousEncryptionKey
+    )
   );
 
   await dbModule.setSetting("smtp_pass", "s3cr3tpassword");
-  await dbModule.setSetting("slack_webhook_url", "https://hooks.slack.com/services/one/two/three");
+  await dbModule.setSetting(
+    "slack_webhook_url",
+    "https://hooks.slack.com/services/one/two/three"
+  );
   await dbModule.setSetting("resend_api_key", "re_abc123XYZ");
   await dbModule.setSetting("telegram_bot_token", "123456:ABC-DEF");
 
@@ -485,11 +619,17 @@ test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
     "https://hooks.slack.com/services/one/two/three"
   );
   assert.equal(await dbModule.getSetting("resend_api_key"), "re_abc123XYZ");
-  assert.equal(await dbModule.getSetting("telegram_bot_token"), "123456:ABC-DEF");
+  assert.equal(
+    await dbModule.getSetting("telegram_bot_token"),
+    "123456:ABC-DEF"
+  );
 
   const all = await dbModule.getAllSettings();
   assert.equal(all.smtp_pass, "s3cr3tpassword");
-  assert.equal(all.slack_webhook_url, "https://hooks.slack.com/services/one/two/three");
+  assert.equal(
+    all.slack_webhook_url,
+    "https://hooks.slack.com/services/one/two/three"
+  );
   assert.equal(all.resend_api_key, "re_abc123XYZ");
   assert.equal(all.telegram_bot_token, "123456:ABC-DEF");
 
@@ -503,12 +643,18 @@ test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
       `Expected encrypted value for ${row.key}, got: ${row.value}`
     );
     assert.notEqual(row.value, "s3cr3tpassword");
-    assert.notEqual(row.value, "https://hooks.slack.com/services/one/two/three");
+    assert.notEqual(
+      row.value,
+      "https://hooks.slack.com/services/one/two/three"
+    );
     assert.notEqual(row.value, "re_abc123XYZ");
     assert.notEqual(row.value, "123456:ABC-DEF");
   }
 
-  await dbModule.setSettings({ smtp_pass: "newpass", smtp_user: "user@example.com" });
+  await dbModule.setSettings({
+    smtp_pass: "newpass",
+    smtp_user: "user@example.com",
+  });
   assert.equal(await dbModule.getSetting("smtp_pass"), "newpass");
   assert.equal(await dbModule.getSetting("smtp_user"), "user@example.com");
   const rawSmtp = (await db.get<{ value: string }>(

@@ -12,9 +12,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const resource = typeof body.resource === "string" ? body.resource.trim() : "";
+  const resource =
+    typeof body.resource === "string" ? body.resource.trim() : "";
   if (!resource.startsWith("/dashboard")) {
-    return NextResponse.json({ error: "A valid resource path is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "A valid resource path is required" },
+      { status: 400 }
+    );
   }
 
   await auditPageAccess(auth.user, resource, req);
