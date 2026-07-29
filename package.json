@@ -22,9 +22,12 @@
     "uuid": "^13.0.0"
   },
   "overrides": {
+    "brace-expansion": "^5.0.8",
+    "minimatch": "^10.2.6",
     "next": {
       "postcss": "^8.5.10"
-    }
+    },
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
@@ -39,7 +42,7 @@
     "typescript": "^5"
   },
   "allowScripts": {
-    "sharp@0.34.5": true,
+    "sharp@0.35.3": true,
     "sqlite3@6.0.1": true,
     "unrs-resolver@1.12.2": true
   }
