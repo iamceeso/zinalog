@@ -31,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Run coverage
-        run: npm run test:coverage | tee coverage-report.txt
+        run: npm run test:coverage 2>&1 | tee coverage-report.txt
 
       - name: Generate coverage badge
         run: node .github/scripts/update-coverage-badge.mjs coverage-report.txt .github/badges/coverage.svg
