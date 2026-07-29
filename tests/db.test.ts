@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -7,6 +8,7 @@ import test from "node:test";
 type DbModule = typeof import("../lib/db");
 
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
+const cjsRequire = createRequire(import.meta.url);
 
 const TEST_ENCRYPTION_KEY = "a".repeat(64);
 
@@ -21,8 +23,8 @@ async function loadDbModule() {
   process.env.DATABASE_PATH = databasePath;
   process.env.ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
   delete global.__dbPromise;
-  delete require.cache[compiledDbModulePath];
-  const dbModule = require(compiledDbModulePath) as DbModule;
+  delete cjsRequire.cache[compiledDbModulePath];
+  const dbModule = cjsRequire(compiledDbModulePath) as DbModule;
 
   return {
     tempDir,
@@ -58,7 +60,7 @@ async function closeAndCleanup(
     process.env.ENCRYPTION_KEY = previousEncryptionKey;
   }
   delete global.__dbPromise;
-  delete require.cache[compiledDbModulePath];
+  delete cjsRequire.cache[compiledDbModulePath];
   await fs.rm(tempDir, { recursive: true, force: true });
 }
 

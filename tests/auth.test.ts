@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
 import { NextRequest } from "next/server";
@@ -9,6 +9,7 @@ type AuthModule = typeof import("../lib/auth");
 
 const compiledAuthModulePath = path.resolve(__dirname, "../lib/auth.js");
 const compiledIpModulePath = path.resolve(__dirname, "../lib/ip.js");
+const cjsRequire = createRequire(import.meta.url);
 
 declare global {
   var __zinalogAuthTestMocks:
@@ -70,10 +71,10 @@ async function loadAuthModule(options?: {
     touchApiKey: options?.touchApiKey ?? (async () => undefined),
   };
   const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
-  const previousDbCache = require.cache[compiledDbModulePath];
-  const previousAuthCache = require.cache[compiledAuthModulePath];
-  const previousIpCache = require.cache[compiledIpModulePath];
-  require.cache[compiledDbModulePath] = {
+  const previousDbCache = cjsRequire.cache[compiledDbModulePath];
+  const previousAuthCache = cjsRequire.cache[compiledAuthModulePath];
+  const previousIpCache = cjsRequire.cache[compiledIpModulePath];
+  cjsRequire.cache[compiledDbModulePath] = {
     id: compiledDbModulePath,
     filename: compiledDbModulePath,
     loaded: true,
@@ -88,7 +89,7 @@ async function loadAuthModule(options?: {
     isPreloading: false,
     parent: module,
     path: path.dirname(compiledDbModulePath),
-    require,
+    require: cjsRequire,
   } as NodeModule;
 
   const previousTrustProxy = process.env.TRUST_PROXY;
@@ -98,9 +99,9 @@ async function loadAuthModule(options?: {
     delete process.env.TRUST_PROXY;
   }
 
-  delete require.cache[compiledAuthModulePath];
-  delete require.cache[compiledIpModulePath];
-  const authModule = require(compiledAuthModulePath) as AuthModule;
+  delete cjsRequire.cache[compiledAuthModulePath];
+  delete cjsRequire.cache[compiledIpModulePath];
+  const authModule = cjsRequire(compiledAuthModulePath) as AuthModule;
 
   return {
     mockId,
@@ -129,19 +130,19 @@ async function closeAuthModule(
     delete globalThis.__zinalogAuthTestMocks[mockId];
   }
   const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
-  delete require.cache[compiledAuthModulePath];
+  delete cjsRequire.cache[compiledAuthModulePath];
   if (previousAuthCache) {
-    require.cache[compiledAuthModulePath] = previousAuthCache;
+    cjsRequire.cache[compiledAuthModulePath] = previousAuthCache;
   }
   if (previousDbCache) {
-    require.cache[compiledDbModulePath] = previousDbCache;
+    cjsRequire.cache[compiledDbModulePath] = previousDbCache;
   } else {
-    delete require.cache[compiledDbModulePath];
+    delete cjsRequire.cache[compiledDbModulePath];
   }
   if (previousIpCache) {
-    require.cache[compiledIpModulePath] = previousIpCache;
+    cjsRequire.cache[compiledIpModulePath] = previousIpCache;
   } else {
-    delete require.cache[compiledIpModulePath];
+    delete cjsRequire.cache[compiledIpModulePath];
   }
 }
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
 import { NextRequest } from "next/server";
@@ -8,6 +8,7 @@ type AdminRateLimitModule = typeof import("../lib/admin-rate-limit");
 
 const compiledModulePath = path.resolve(__dirname, "../lib/admin-rate-limit.js");
 const compiledIpModulePath = path.resolve(__dirname, "../lib/ip.js");
+const cjsRequire = createRequire(import.meta.url);
 
 declare global {
   var __zinalogAdminRateLimitTestMocks:
@@ -43,9 +44,9 @@ async function loadAdminRateLimitModule(options?: {
   globalThis.__zinalogAdminRateLimitTestMocks[mockId] = {
     getClientIp: options?.getClientIp ?? (() => "unknown"),
   };
-  const previousIpCache = require.cache[compiledIpModulePath];
-  const previousModuleCache = require.cache[compiledModulePath];
-  require.cache[compiledIpModulePath] = {
+  const previousIpCache = cjsRequire.cache[compiledIpModulePath];
+  const previousModuleCache = cjsRequire.cache[compiledModulePath];
+  cjsRequire.cache[compiledIpModulePath] = {
     id: compiledIpModulePath,
     filename: compiledIpModulePath,
     loaded: true,
@@ -58,15 +59,15 @@ async function loadAdminRateLimitModule(options?: {
     isPreloading: false,
     parent: module,
     path: path.dirname(compiledIpModulePath),
-    require,
+    require: cjsRequire,
   } as NodeModule;
-  delete require.cache[compiledModulePath];
+  delete cjsRequire.cache[compiledModulePath];
 
   return {
     mockId,
     previousIpCache,
     previousModuleCache,
-    adminRateLimitModule: require(compiledModulePath) as AdminRateLimitModule,
+    adminRateLimitModule: cjsRequire(compiledModulePath) as AdminRateLimitModule,
   };
 }
 
@@ -78,14 +79,14 @@ async function closeAdminRateLimitModule(
   if (globalThis.__zinalogAdminRateLimitTestMocks) {
     delete globalThis.__zinalogAdminRateLimitTestMocks[mockId];
   }
-  delete require.cache[compiledModulePath];
+  delete cjsRequire.cache[compiledModulePath];
   if (previousModuleCache) {
-    require.cache[compiledModulePath] = previousModuleCache;
+    cjsRequire.cache[compiledModulePath] = previousModuleCache;
   }
   if (previousIpCache) {
-    require.cache[compiledIpModulePath] = previousIpCache;
+    cjsRequire.cache[compiledIpModulePath] = previousIpCache;
   } else {
-    delete require.cache[compiledIpModulePath];
+    delete cjsRequire.cache[compiledIpModulePath];
   }
 }
 

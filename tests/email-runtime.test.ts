@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
 
@@ -6,10 +7,11 @@ type EmailModule = typeof import("../lib/email");
 
 const compiledEmailModulePath = path.resolve(__dirname, "../lib/email.js");
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
+const cjsRequire = createRequire(import.meta.url);
 
 function mockModule(modulePath: string, exports: object): NodeModule | undefined {
-  const previous = require.cache[modulePath];
-  require.cache[modulePath] = {
+  const previous = cjsRequire.cache[modulePath];
+  cjsRequire.cache[modulePath] = {
     id: modulePath,
     filename: modulePath,
     loaded: true,
@@ -19,16 +21,16 @@ function mockModule(modulePath: string, exports: object): NodeModule | undefined
     isPreloading: false,
     parent: module,
     path: path.dirname(modulePath),
-    require,
+    require: cjsRequire,
   } as NodeModule;
   return previous;
 }
 
 function restoreModule(modulePath: string, previous: NodeModule | undefined): void {
   if (previous) {
-    require.cache[modulePath] = previous;
+    cjsRequire.cache[modulePath] = previous;
   } else {
-    delete require.cache[modulePath];
+    delete cjsRequire.cache[modulePath];
   }
 }
 
@@ -37,11 +39,13 @@ async function loadEmailModule(options: {
   resendSend?: (payload: unknown) => Promise<{ error?: { message: string } | null }>;
   createTransport?: (config: unknown) => { sendMail: (payload: unknown) => Promise<unknown> };
 }) {
-  const previousEmailCache = require.cache[compiledEmailModulePath];
+  const previousEmailCache = cjsRequire.cache[compiledEmailModulePath];
   const previousDbCache = mockModule(compiledDbModulePath, {
     getAllSettings: async () => options.settings,
   });
-  const previousNodemailerCache = mockModule(require.resolve("nodemailer"), {
+  const nodemailerModulePath = cjsRequire.resolve("nodemailer");
+  const resendModulePath = cjsRequire.resolve("resend");
+  const previousNodemailerCache = mockModule(nodemailerModulePath, {
     __esModule: true,
     default: {
       createTransport:
@@ -51,7 +55,7 @@ async function loadEmailModule(options: {
         })),
     },
   });
-  const previousResendCache = mockModule(require.resolve("resend"), {
+  const previousResendCache = mockModule(resendModulePath, {
     Resend: class {
       emails = {
         send:
@@ -63,16 +67,16 @@ async function loadEmailModule(options: {
     },
   });
 
-  delete require.cache[compiledEmailModulePath];
-  const emailModule = require(compiledEmailModulePath) as EmailModule;
+  delete cjsRequire.cache[compiledEmailModulePath];
+  const emailModule = cjsRequire(compiledEmailModulePath) as EmailModule;
 
   return {
     emailModule,
     restore() {
       restoreModule(compiledEmailModulePath, previousEmailCache);
       restoreModule(compiledDbModulePath, previousDbCache);
-      restoreModule(require.resolve("nodemailer"), previousNodemailerCache);
-      restoreModule(require.resolve("resend"), previousResendCache);
+      restoreModule(nodemailerModulePath, previousNodemailerCache);
+      restoreModule(resendModulePath, previousResendCache);
     },
   };
 }
