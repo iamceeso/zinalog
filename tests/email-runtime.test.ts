@@ -7,7 +7,7 @@ type EmailModule = typeof import("../lib/email");
 
 const compiledEmailModulePath = path.resolve(__dirname, "../lib/email.js");
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
-const cjsRequire = createRequire(import.meta.url);
+const cjsRequire = createRequire(__filename);
 
 function mockModule(
   modulePath: string,

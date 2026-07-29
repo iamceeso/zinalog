@@ -11,7 +11,7 @@ const compiledModulePath = path.resolve(
   "../lib/admin-rate-limit.js"
 );
 const compiledIpModulePath = path.resolve(__dirname, "../lib/ip.js");
-const cjsRequire = createRequire(import.meta.url);
+const cjsRequire = createRequire(__filename);
 
 declare global {
   var __zinalogAdminRateLimitTestMocks:

@@ -8,7 +8,7 @@ import test from "node:test";
 type DbModule = typeof import("../lib/db");
 
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
-const cjsRequire = createRequire(import.meta.url);
+const cjsRequire = createRequire(__filename);
 
 const TEST_ENCRYPTION_KEY = "a".repeat(64);
 

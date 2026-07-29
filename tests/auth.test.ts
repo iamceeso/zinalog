@@ -9,7 +9,7 @@ type AuthModule = typeof import("../lib/auth");
 
 const compiledAuthModulePath = path.resolve(__dirname, "../lib/auth.js");
 const compiledIpModulePath = path.resolve(__dirname, "../lib/ip.js");
-const cjsRequire = createRequire(import.meta.url);
+const cjsRequire = createRequire(__filename);
 
 declare global {
   var __zinalogAuthTestMocks:
