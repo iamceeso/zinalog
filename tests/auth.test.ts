@@ -63,27 +63,33 @@ async function loadAuthModule(options?: {
   getApiKey?: (rawKey: string) => Promise<ApiKey | null>;
   touchApiKey?: (id: number) => Promise<void>;
 }) {
-  const runtimeRoot = path.resolve(__dirname, "../.module-cache");
-  await fs.mkdir(runtimeRoot, { recursive: true });
-  const runtimeDir = await fs.mkdtemp(path.join(runtimeRoot, "auth-runtime-"));
-
-  await fs.copyFile(compiledAuthModulePath, path.join(runtimeDir, "auth.js"));
-  await fs.copyFile(compiledIpModulePath, path.join(runtimeDir, "ip.js"));
-
   const mockId = `auth-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   globalThis.__zinalogAuthTestMocks ??= {};
   globalThis.__zinalogAuthTestMocks[mockId] = {
     getApiKey: options?.getApiKey ?? (async () => null),
     touchApiKey: options?.touchApiKey ?? (async () => undefined),
   };
-
-  await fs.writeFile(
-    path.join(runtimeDir, "db.js"),
-    `const mocks = globalThis.__zinalogAuthTestMocks[${JSON.stringify(mockId)}];
-exports.getApiKey = (...args) => mocks.getApiKey(...args);
-exports.touchApiKey = (...args) => mocks.touchApiKey(...args);
-`
-  );
+  const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
+  const previousDbCache = require.cache[compiledDbModulePath];
+  const previousAuthCache = require.cache[compiledAuthModulePath];
+  const previousIpCache = require.cache[compiledIpModulePath];
+  require.cache[compiledDbModulePath] = {
+    id: compiledDbModulePath,
+    filename: compiledDbModulePath,
+    loaded: true,
+    exports: {
+      getApiKey: (...args: [string]) =>
+        globalThis.__zinalogAuthTestMocks?.[mockId]?.getApiKey(...args),
+      touchApiKey: (...args: [number]) =>
+        globalThis.__zinalogAuthTestMocks?.[mockId]?.touchApiKey(...args),
+    },
+    children: [],
+    paths: [],
+    isPreloading: false,
+    parent: module,
+    path: path.dirname(compiledDbModulePath),
+    require,
+  } as NodeModule;
 
   const previousTrustProxy = process.env.TRUST_PROXY;
   if (options?.trustProxy) {
@@ -92,20 +98,26 @@ exports.touchApiKey = (...args) => mocks.touchApiKey(...args);
     delete process.env.TRUST_PROXY;
   }
 
-  const authModule = (await import(path.join(runtimeDir, "auth.js"))) as AuthModule;
+  delete require.cache[compiledAuthModulePath];
+  delete require.cache[compiledIpModulePath];
+  const authModule = require(compiledAuthModulePath) as AuthModule;
 
   return {
-    runtimeDir,
     mockId,
     authModule,
     previousTrustProxy,
+    previousDbCache,
+    previousAuthCache,
+    previousIpCache,
   };
 }
 
 async function closeAuthModule(
-  runtimeDir: string,
   mockId: string,
-  previousTrustProxy: string | undefined
+  previousTrustProxy: string | undefined,
+  previousDbCache: NodeModule | undefined,
+  previousAuthCache: NodeModule | undefined,
+  previousIpCache: NodeModule | undefined
 ) {
   if (previousTrustProxy === undefined) {
     delete process.env.TRUST_PROXY;
@@ -116,13 +128,29 @@ async function closeAuthModule(
   if (globalThis.__zinalogAuthTestMocks) {
     delete globalThis.__zinalogAuthTestMocks[mockId];
   }
-
-  await fs.rm(runtimeDir, { recursive: true, force: true });
+  const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
+  delete require.cache[compiledAuthModulePath];
+  if (previousAuthCache) {
+    require.cache[compiledAuthModulePath] = previousAuthCache;
+  }
+  if (previousDbCache) {
+    require.cache[compiledDbModulePath] = previousDbCache;
+  } else {
+    delete require.cache[compiledDbModulePath];
+  }
+  if (previousIpCache) {
+    require.cache[compiledIpModulePath] = previousIpCache;
+  } else {
+    delete require.cache[compiledIpModulePath];
+  }
 }
 
 test("getClientIp normalizes direct request IP values", async (t) => {
-  const { runtimeDir, mockId, authModule, previousTrustProxy } = await loadAuthModule();
-  t.after(async () => closeAuthModule(runtimeDir, mockId, previousTrustProxy));
+  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
+    await loadAuthModule();
+  t.after(async () =>
+    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+  );
 
   assert.equal(authModule.getClientIp(createRequest({ ip: "::ffff:192.0.2.10" })), "192.0.2.10");
   assert.equal(authModule.getClientIp(createRequest({ ip: "fe80::1%eth0" })), "fe80::1");
@@ -131,7 +159,15 @@ test("getClientIp normalizes direct request IP values", async (t) => {
 
 test("getClientIp trusts forwarded headers only when TRUST_PROXY is enabled", async (t) => {
   const direct = await loadAuthModule({ trustProxy: false });
-  t.after(async () => closeAuthModule(direct.runtimeDir, direct.mockId, direct.previousTrustProxy));
+  t.after(async () =>
+    closeAuthModule(
+      direct.mockId,
+      direct.previousTrustProxy,
+      direct.previousDbCache,
+      direct.previousAuthCache,
+      direct.previousIpCache
+    )
+  );
 
   const forwardedRequest = createRequest({
     headers: { "x-forwarded-for": "203.0.113.9, 10.0.0.1" },
@@ -140,7 +176,15 @@ test("getClientIp trusts forwarded headers only when TRUST_PROXY is enabled", as
   assert.equal(direct.authModule.getClientIp(forwardedRequest), "192.0.2.2");
 
   const proxied = await loadAuthModule({ trustProxy: true });
-  t.after(async () => closeAuthModule(proxied.runtimeDir, proxied.mockId, proxied.previousTrustProxy));
+  t.after(async () =>
+    closeAuthModule(
+      proxied.mockId,
+      proxied.previousTrustProxy,
+      proxied.previousDbCache,
+      proxied.previousAuthCache,
+      proxied.previousIpCache
+    )
+  );
 
   assert.equal(proxied.authModule.getClientIp(forwardedRequest), "203.0.113.9");
   assert.equal(
@@ -152,6 +196,18 @@ test("getClientIp trusts forwarded headers only when TRUST_PROXY is enabled", as
     ),
     "198.51.100.8"
   );
+  assert.equal(
+    proxied.authModule.getClientIp(
+      createRequest({
+        headers: {
+          "x-forwarded-for": "not-an-ip",
+          "x-real-ip": "203.0.113.55",
+        },
+      })
+    ),
+    "203.0.113.55"
+  );
+  assert.equal(proxied.authModule.getClientIp(createRequest()), "unknown");
 });
 
 test("validateApiKey rejects missing, expired, and disallowed requests", async (t) => {
@@ -161,20 +217,49 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
   const allowedKey = createApiKey({
     allowed_ips: "192.168.1.0/24,2001:db8::/32",
   });
+  const exactIpKey = createApiKey({
+    id: 2,
+    allowed_ips: "198.51.100.25",
+  });
+  const invalidCidrKey = createApiKey({
+    id: 3,
+    allowed_ips: "198.51.100.0/not-a-prefix",
+  });
+  const zeroPrefixKey = createApiKey({
+    id: 4,
+    allowed_ips: "0.0.0.0/0",
+  });
 
-  const { runtimeDir, mockId, authModule, previousTrustProxy } = await loadAuthModule({
-    getApiKey: async (rawKey) => {
+  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
+    await loadAuthModule({
+      getApiKey: async (rawKey) => {
       if (rawKey === "expired-key") return expiredKey;
       if (rawKey === "allowed-key") return allowedKey;
+      if (rawKey === "exact-ip-key") return exactIpKey;
+      if (rawKey === "invalid-cidr-key") return invalidCidrKey;
+      if (rawKey === "zero-prefix-key") return zeroPrefixKey;
       return null;
     },
   });
-  t.after(async () => closeAuthModule(runtimeDir, mockId, previousTrustProxy));
+  t.after(async () =>
+    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+  );
 
   const missing = await authModule.validateApiKey(createRequest());
   assert.deepEqual(missing, {
     success: false,
     error: "Missing or invalid Authorization header. Use: Authorization: Bearer YOUR_API_KEY",
+    status: 401,
+  });
+
+  const invalid = await authModule.validateApiKey(
+    createRequest({
+      headers: { authorization: "Bearer invalid-key" },
+    })
+  );
+  assert.deepEqual(invalid, {
+    success: false,
+    error: "Invalid or revoked API key",
     status: 401,
   });
 
@@ -210,6 +295,45 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
   );
   assert.equal(allowed.success, true);
   assert.equal(allowed.apiKey?.id, allowedKey.id);
+
+  const exactAllowed = await authModule.validateApiKey(
+    createRequest({
+      headers: { authorization: "Bearer exact-ip-key" },
+      ip: "198.51.100.25",
+    })
+  );
+  assert.equal(exactAllowed.success, true);
+
+  const invalidCidr = await authModule.validateApiKey(
+    createRequest({
+      headers: { authorization: "Bearer invalid-cidr-key" },
+      ip: "198.51.100.25",
+    })
+  );
+  assert.deepEqual(invalidCidr, {
+    success: false,
+    error: "IP address 198.51.100.25 is not allowed for this API key",
+    status: 403,
+  });
+
+  const zeroPrefixAllowed = await authModule.validateApiKey(
+    createRequest({
+      headers: { authorization: "Bearer zero-prefix-key" },
+      ip: "203.0.113.77",
+    })
+  );
+  assert.equal(zeroPrefixAllowed.success, true);
+
+  const unknownBlocked = await authModule.validateApiKey(
+    createRequest({
+      headers: { authorization: "Bearer allowed-key" },
+    })
+  );
+  assert.deepEqual(unknownBlocked, {
+    success: false,
+    error: "IP address unknown is not allowed for this API key",
+    status: 403,
+  });
 });
 
 test("validateApiKey increments usage only for requests within the rate limit", async (t) => {
@@ -219,13 +343,16 @@ test("validateApiKey increments usage only for requests within the rate limit", 
     rate_limit: 2,
   });
 
-  const { runtimeDir, mockId, authModule, previousTrustProxy } = await loadAuthModule({
+  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
+    await loadAuthModule({
     getApiKey: async (rawKey) => (rawKey === "burst-key" ? rateLimitedKey : null),
     touchApiKey: async (id) => {
       touchedKeyIds.push(id);
     },
   });
-  t.after(async () => closeAuthModule(runtimeDir, mockId, previousTrustProxy));
+  t.after(async () =>
+    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+  );
 
   const request = () =>
     authModule.validateApiKey(
@@ -246,4 +373,68 @@ test("validateApiKey increments usage only for requests within the rate limit", 
   });
 
   assert.deepEqual(touchedKeyIds, [42, 42]);
+});
+
+test("validateApiKey resets rate limits after the window and skips limiting for non-positive limits", async (t) => {
+  const touchedKeyIds: number[] = [];
+  const unlimitedKey = createApiKey({
+    id: 99,
+    rate_limit: 0,
+  });
+  const singleBurstKey = createApiKey({
+    id: 100,
+    rate_limit: 1,
+  });
+
+  const { mockId, authModule, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache } =
+    await loadAuthModule({
+      getApiKey: async (rawKey) => {
+        if (rawKey === "unlimited-key") return unlimitedKey;
+        if (rawKey === "single-burst-key") return singleBurstKey;
+        return null;
+      },
+      touchApiKey: async (id) => {
+        touchedKeyIds.push(id);
+      },
+    });
+  t.after(async () =>
+    closeAuthModule(mockId, previousTrustProxy, previousDbCache, previousAuthCache, previousIpCache)
+  );
+
+  const restoreNow = Date.now;
+  let now = 1_000;
+  Date.now = () => now;
+  t.after(() => {
+    Date.now = restoreNow;
+  });
+
+  const unlimitedRequest = () =>
+    authModule.validateApiKey(
+      createRequest({
+        headers: { authorization: "Bearer unlimited-key" },
+        ip: "198.51.100.50",
+      })
+    );
+
+  assert.equal((await unlimitedRequest()).success, true);
+  assert.equal((await unlimitedRequest()).success, true);
+
+  const singleBurstRequest = () =>
+    authModule.validateApiKey(
+      createRequest({
+        headers: { authorization: "Bearer single-burst-key" },
+        ip: "198.51.100.60",
+      })
+    );
+
+  assert.equal((await singleBurstRequest()).success, true);
+  assert.deepEqual(await singleBurstRequest(), {
+    success: false,
+    error: "Rate limit exceeded. Max 1 requests/minute",
+    status: 429,
+  });
+
+  now += 60_001;
+  assert.equal((await singleBurstRequest()).success, true);
+  assert.deepEqual(touchedKeyIds, [99, 99, 100, 100]);
 });

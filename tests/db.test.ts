@@ -7,25 +7,12 @@ import test from "node:test";
 type DbModule = typeof import("../lib/db");
 
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
-const compiledSecretCryptoPath = path.resolve(__dirname, "../lib/secret-crypto.js");
 
 const TEST_ENCRYPTION_KEY = "a".repeat(64);
 
 async function loadDbModule() {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "zinalog-db-test-"));
   const databasePath = path.join(tempDir, "logs.db");
-  const runtimeModulesDir = path.resolve(__dirname, "../.module-cache");
-  await fs.mkdir(runtimeModulesDir, { recursive: true });
-
-  // secret-crypto.js is stateless; copy it once so db-runtime can require("./secret-crypto")
-  const cachedSecretCryptoPath = path.join(runtimeModulesDir, "secret-crypto.js");
-  await fs.copyFile(compiledSecretCryptoPath, cachedSecretCryptoPath);
-
-  const runtimeModulePath = path.join(
-    runtimeModulesDir,
-    `db-runtime-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.cjs`
-  );
-  await fs.copyFile(compiledDbModulePath, runtimeModulePath);
 
   const previousNodeEnv = process.env.NODE_ENV;
   const previousDatabasePath = process.env.DATABASE_PATH;
@@ -33,11 +20,12 @@ async function loadDbModule() {
   process.env.NODE_ENV = "production";
   process.env.DATABASE_PATH = databasePath;
   process.env.ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
-  const dbModule = (await import(runtimeModulePath)) as DbModule;
+  delete global.__dbPromise;
+  delete require.cache[compiledDbModulePath];
+  const dbModule = require(compiledDbModulePath) as DbModule;
 
   return {
     tempDir,
-    runtimeModulePath,
     dbModule,
     previousNodeEnv,
     previousDatabasePath,
@@ -47,7 +35,6 @@ async function loadDbModule() {
 
 async function closeAndCleanup(
   tempDir: string,
-  runtimeModulePath: string,
   dbModule: DbModule,
   previousNodeEnv: string | undefined,
   previousDatabasePath: string | undefined,
@@ -70,15 +57,16 @@ async function closeAndCleanup(
   } else {
     process.env.ENCRYPTION_KEY = previousEncryptionKey;
   }
-  await fs.rm(runtimeModulePath, { force: true });
+  delete global.__dbPromise;
+  delete require.cache[compiledDbModulePath];
   await fs.rm(tempDir, { recursive: true, force: true });
 }
 
 test("initializes the async SQLite database with default settings", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   assert.equal(await dbModule.getSetting("retention_days"), "30");
@@ -92,10 +80,10 @@ test("initializes the async SQLite database with default settings", async (t) =>
 });
 
 test("writes, filters, and trims logs asynchronously", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   await dbModule.setSetting("max_logs", "2");
@@ -158,10 +146,10 @@ test("writes, filters, and trims logs asynchronously", async (t) => {
 });
 
 test("creates, touches, revokes, and deletes API keys asynchronously", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const rawKey = "zinalog_test_key_123";
@@ -191,10 +179,10 @@ test("creates, touches, revokes, and deletes API keys asynchronously", async (t)
 });
 
 test("supports async user, session, challenge, and audit operations", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const user = await dbModule.createUser({
@@ -280,10 +268,10 @@ test("supports async user, session, challenge, and audit operations", async (t) 
 });
 
 test("creates the initial admin only once", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const created = await dbModule.createInitialAdminUser({
@@ -306,10 +294,10 @@ test("creates the initial admin only once", async (t) => {
 });
 
 test("groups logs, counts recent activity, and deletes retained logs", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   const oldestId = await dbModule.insertLog({
@@ -373,10 +361,10 @@ test("groups logs, counts recent activity, and deletes retained logs", async (t)
 });
 
 test("applies settings fallbacks and cleans up auth records", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   await dbModule.setSettings({
@@ -478,10 +466,10 @@ test("applies settings fallbacks and cleans up auth records", async (t) => {
 });
 
 test("encrypts sensitive settings at rest and decrypts on read", async (t) => {
-  const { tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
+  const { tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey } =
     await loadDbModule();
   t.after(async () =>
-    closeAndCleanup(tempDir, runtimeModulePath, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
+    closeAndCleanup(tempDir, dbModule, previousNodeEnv, previousDatabasePath, previousEncryptionKey)
   );
 
   await dbModule.setSetting("smtp_pass", "s3cr3tpassword");

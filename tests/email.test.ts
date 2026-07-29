@@ -35,6 +35,21 @@ test("buildAlertEmail skips metadata blocks when metadata is not valid JSON", ()
   assert.doesNotMatch(html, /<pre style="margin:0;background:#0d1117.*Retry queue/s);
 });
 
+test("buildAlertEmail falls back for unknown levels without truncating short subjects", () => {
+  const { subject, html } = buildAlertEmail({
+    level: "fatal",
+    message: "Short message",
+    service: "billing",
+    stack: null,
+    metadata: null,
+    created_at: "2026-03-16T11:00:00.000Z",
+  });
+
+  assert.equal(subject, "[ZinaLog] FATAL: Short message");
+  assert.match(html, /billing/);
+  assert.match(html, /background:#8b949e22/);
+});
+
 test("buildUserInviteEmail includes login credentials and destination URL", () => {
   const { subject, html } = buildUserInviteEmail({
     username: "alice",

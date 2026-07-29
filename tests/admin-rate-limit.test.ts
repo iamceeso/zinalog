@@ -7,6 +7,7 @@ import { NextRequest } from "next/server";
 type AdminRateLimitModule = typeof import("../lib/admin-rate-limit");
 
 const compiledModulePath = path.resolve(__dirname, "../lib/admin-rate-limit.js");
+const compiledIpModulePath = path.resolve(__dirname, "../lib/ip.js");
 
 declare global {
   var __zinalogAdminRateLimitTestMocks:
@@ -35,12 +36,6 @@ function createRequest(input?: {
 async function loadAdminRateLimitModule(options?: {
   getClientIp?: (request: NextRequest) => string;
 }) {
-  const runtimeRoot = path.resolve(__dirname, "../.module-cache");
-  await fs.mkdir(runtimeRoot, { recursive: true });
-  const runtimeDir = await fs.mkdtemp(path.join(runtimeRoot, "admin-rate-limit-"));
-  const runtimeModulePath = path.join(runtimeDir, "admin-rate-limit.js");
-  await fs.copyFile(compiledModulePath, runtimeModulePath);
-
   const mockId = `admin-rate-limit-${process.pid}-${Date.now()}-${Math.random()
     .toString(16)
     .slice(2)}`;
@@ -48,34 +43,57 @@ async function loadAdminRateLimitModule(options?: {
   globalThis.__zinalogAdminRateLimitTestMocks[mockId] = {
     getClientIp: options?.getClientIp ?? (() => "unknown"),
   };
-
-  await fs.writeFile(
-    path.join(runtimeDir, "ip.js"),
-    `const mocks = globalThis.__zinalogAdminRateLimitTestMocks[${JSON.stringify(mockId)}];
-exports.getClientIp = (...args) => mocks.getClientIp(...args);
-`
-  );
+  const previousIpCache = require.cache[compiledIpModulePath];
+  const previousModuleCache = require.cache[compiledModulePath];
+  require.cache[compiledIpModulePath] = {
+    id: compiledIpModulePath,
+    filename: compiledIpModulePath,
+    loaded: true,
+    exports: {
+      getClientIp: (...args: [NextRequest]) =>
+        globalThis.__zinalogAdminRateLimitTestMocks?.[mockId]?.getClientIp(...args),
+    },
+    children: [],
+    paths: [],
+    isPreloading: false,
+    parent: module,
+    path: path.dirname(compiledIpModulePath),
+    require,
+  } as NodeModule;
+  delete require.cache[compiledModulePath];
 
   return {
-    runtimeDir,
     mockId,
-    adminRateLimitModule: (await import(runtimeModulePath)) as AdminRateLimitModule,
+    previousIpCache,
+    previousModuleCache,
+    adminRateLimitModule: require(compiledModulePath) as AdminRateLimitModule,
   };
 }
 
-async function closeAdminRateLimitModule(runtimeDir: string, mockId: string) {
+async function closeAdminRateLimitModule(
+  mockId: string,
+  previousIpCache: NodeModule | undefined,
+  previousModuleCache: NodeModule | undefined
+) {
   if (globalThis.__zinalogAdminRateLimitTestMocks) {
     delete globalThis.__zinalogAdminRateLimitTestMocks[mockId];
   }
-
-  await fs.rm(runtimeDir, { recursive: true, force: true });
+  delete require.cache[compiledModulePath];
+  if (previousModuleCache) {
+    require.cache[compiledModulePath] = previousModuleCache;
+  }
+  if (previousIpCache) {
+    require.cache[compiledIpModulePath] = previousIpCache;
+  } else {
+    delete require.cache[compiledIpModulePath];
+  }
 }
 
 test("checkAdminRateLimit blocks the 31st request in a one-minute window", async (t) => {
-  const { runtimeDir, mockId, adminRateLimitModule } = await loadAdminRateLimitModule({
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
     getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
   });
-  t.after(async () => closeAdminRateLimitModule(runtimeDir, mockId));
+  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
 
   const restoreNow = Date.now;
   Date.now = () => 1_000;
@@ -98,10 +116,10 @@ test("checkAdminRateLimit blocks the 31st request in a one-minute window", async
 });
 
 test("checkAdminRateLimit resets counters after the time window elapses", async (t) => {
-  const { runtimeDir, mockId, adminRateLimitModule } = await loadAdminRateLimitModule({
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
     getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
   });
-  t.after(async () => closeAdminRateLimitModule(runtimeDir, mockId));
+  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
 
   const restoreNow = Date.now;
   let now = 10_000;
@@ -121,10 +139,10 @@ test("checkAdminRateLimit resets counters after the time window elapses", async 
 });
 
 test("checkAdminRateLimit tracks different IPs independently", async (t) => {
-  const { runtimeDir, mockId, adminRateLimitModule } = await loadAdminRateLimitModule({
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
     getClientIp: (request) => request.headers.get("x-test-ip") ?? "unknown",
   });
-  t.after(async () => closeAdminRateLimitModule(runtimeDir, mockId));
+  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
 
   const restoreNow = Date.now;
   Date.now = () => 25_000;
@@ -143,7 +161,7 @@ test("checkAdminRateLimit tracks different IPs independently", async (t) => {
 });
 
 test("checkAdminRateLimit uses getClientIp output when grouping requests", async (t) => {
-  const { runtimeDir, mockId, adminRateLimitModule } = await loadAdminRateLimitModule({
+  const { mockId, previousIpCache, previousModuleCache, adminRateLimitModule } = await loadAdminRateLimitModule({
     getClientIp: (request) => {
       if (request.headers.get("x-forwarded-for")) {
         return "198.51.100.44";
@@ -152,7 +170,7 @@ test("checkAdminRateLimit uses getClientIp output when grouping requests", async
       return request.headers.get("x-test-ip") ?? "unknown";
     },
   });
-  t.after(async () => closeAdminRateLimitModule(runtimeDir, mockId));
+  t.after(async () => closeAdminRateLimitModule(mockId, previousIpCache, previousModuleCache));
 
   const restoreNow = Date.now;
   Date.now = () => 50_000;

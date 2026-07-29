@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  maskAlertSettingValue,
   isMaskedAlertSettingValue,
   sanitizeAlertSettingsForClient,
 } from "../lib/alert-settings";
@@ -38,4 +39,9 @@ test("isMaskedAlertSettingValue only treats UI mask sentinels as preserved secre
   assert.equal(isMaskedAlertSettingValue("slack_webhook_url", "********************"), true);
   assert.equal(isMaskedAlertSettingValue("smtp_pass", "real-password"), false);
   assert.equal(isMaskedAlertSettingValue("smtp_host", "smtp.example.com"), false);
+});
+
+test("maskAlertSettingValue leaves non-sensitive and empty values untouched", () => {
+  assert.equal(maskAlertSettingValue("smtp_host", "smtp.example.com"), "smtp.example.com");
+  assert.equal(maskAlertSettingValue("smtp_pass", ""), "");
 });
