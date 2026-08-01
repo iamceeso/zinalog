@@ -30,7 +30,7 @@ export default function OverviewClient({ initialStats }: OverviewClientProps) {
       .then((r) => r.json())
       .then((data: Stats) => setStats(data))
       .catch(() => {
-        /* silently ignore — stale data is fine */
+        /* silently ignore - stale data is fine */
       });
   }, []);
 
@@ -102,7 +102,7 @@ export default function OverviewClient({ initialStats }: OverviewClientProps) {
 
       {/* Main grid */}
       <div className="flex-1 min-h-0 grid grid-cols-[1fr_340px] gap-3">
-        {/* Left column — charts + recent errors */}
+        {/* Left column - charts + recent errors */}
         <div className="flex flex-col gap-3 min-h-0 overflow-y-auto pr-0.5">
           <CardShell title="Activity (last 24h)">
             <ActivityChart hourlyByLevel={stats.hourlyByLevel} />
@@ -122,7 +122,7 @@ export default function OverviewClient({ initialStats }: OverviewClientProps) {
           </CardShell>
         </div>
 
-        {/* Right column — live stream */}
+        {/* Right column - live stream */}
         <div className="min-h-0 flex flex-col">
           <LiveLogs
             logs={logs}

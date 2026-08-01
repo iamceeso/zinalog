@@ -15,6 +15,7 @@
   "include": [
     "tests/**/*.ts",
     "lib/db.ts",
+    "lib/migrations.ts",
     "lib/secret-crypto.ts",
     "lib/auth.ts",
     "lib/auth-abuse.ts",

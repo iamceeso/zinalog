@@ -46,6 +46,12 @@ ENV APP_COMMIT_SHA=$APP_COMMIT_SHA
 ENV NEXT_PUBLIC_APP_VERSION=$APP_VERSION
 ENV NEXT_PUBLIC_APP_COMMIT_SHA=$APP_COMMIT_SHA
 
+# iputils-ping is required for ping-type monitors. Debian's package grants
+# the binary cap_net_raw via setcap, so it works for the non-root nextjs user.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends iputils-ping \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser  --system --uid 1001 nextjs
 
@@ -53,6 +59,12 @@ RUN adduser  --system --uid 1001 nextjs
 COPY --from=builder /app/public                              ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static  ./.next/static
+
+# Migration SQL files are read from disk at runtime (not bundled by the
+# Next.js tracer), so they must be copied explicitly. The migrate CLI is
+# included too, so `docker exec` can run status/up/down inside the container.
+COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
+COPY --from=builder --chown=nextjs:nodejs /app/scripts    ./scripts
 
 # The Next standalone output already includes the sqlite/sqlite3 runtime modules
 # required by the app, so no extra native dependency copies are needed here.

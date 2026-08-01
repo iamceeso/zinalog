@@ -90,6 +90,17 @@ test("initializes the async SQLite database with default settings", async (t) =>
   assert.equal(settings.alert_levels, "error");
   assert.equal(settings.session_idle_timeout_minutes, "30");
   assert.equal(settings.webhook_method, "POST");
+
+  const db = await dbModule.getDb();
+  const migrationsTable = await db.get<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'"
+  );
+  assert.equal(migrationsTable?.name, "schema_migrations");
+
+  const monitorsTable = await db.get<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'monitors'"
+  );
+  assert.equal(monitorsTable?.name, "monitors");
 });
 
 test("writes, filters, and trims logs asynchronously", async (t) => {
