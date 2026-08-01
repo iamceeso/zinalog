@@ -16,9 +16,9 @@ API access is authenticated via long-lived Bearer tokens. Keys are stored using 
 
 ZinaLog uses role-based access control (RBAC) with three roles:
 
-- **Admin** — Full system access, including users, API keys, settings, and log deletion.
-- **Operator** — Can manage API keys and view logs and stats, but cannot manage users or global settings.
-- **Viewer** — Read-only access to logs and metrics.
+- **Admin** - Full system access, including users, API keys, settings, and log deletion.
+- **Operator** - Can manage API keys and view logs and stats, but cannot manage users or global settings.
+- **Viewer** - Read-only access to logs and metrics.
 
 ## Network Protections
 
@@ -48,6 +48,6 @@ ZinaLog stores logs exactly as received and does not inspect or redact their con
 
 ## Reporting Vulnerabilities
 
-Please report security vulnerabilities **responsibly** — do not open public GitHub issues for security problems.
+Please report security vulnerabilities **responsibly** - do not open public GitHub issues for security problems.
 
 Send a report to **hi@ceeso.dev** with a description of the issue, steps to reproduce it, and an assessment of potential impact. You will receive an acknowledgement within 72 hours.
