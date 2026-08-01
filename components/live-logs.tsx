@@ -32,7 +32,7 @@ export default function LiveLogs({
   const [internalConnected, setInternalConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Self-managed SSE — only used when not in controlled mode
+  // Self-managed SSE only used when not in controlled mode
   useEffect(() => {
     if (controlled) return;
     const es = new EventSource("/api/stream");

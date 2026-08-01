@@ -12,7 +12,7 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const keys = await listApiKeys();
-  // Show only a fixed prefix — never expose any suffix to prevent brute-force narrowing
+  // Show only a fixed prefix never expose any suffix to prevent brute-force narrowing
   const safeKeys = keys.map((k) => ({
     ...k,
     key: `zinalog_${"*".repeat(20)}`,

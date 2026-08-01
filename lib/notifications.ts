@@ -36,7 +36,7 @@ export async function sendTelegram(
   const service = log.service ?? "unknown";
   const emoji = LEVEL_EMOJI[log.level] ?? "⚪";
   const msg = [
-    `${emoji} *[${log.level.toUpperCase()}]* — ${escTg(log.message)}`,
+    `${emoji} *[${log.level.toUpperCase()}]* - ${escTg(log.message)}`,
     `📦 *Service:* \`${escTg(service)}\``,
     `🕐 \`${log.created_at}\``,
     log.stack ? `\n\`\`\`\n${log.stack.slice(0, 800)}\n\`\`\`` : null,
@@ -97,7 +97,7 @@ export async function sendSlack(
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `${emoji} *${log.level.toUpperCase()}* — ${log.message}`,
+              text: `${emoji} *${log.level.toUpperCase()}* - ${log.message}`,
             },
           },
           {
@@ -355,7 +355,7 @@ export async function sendTestNotification(
       const { subject, html } = buildAlertEmail(testLog);
       return sendEmail({
         to: cfg.to,
-        subject: "ZinaLog — Test: " + subject,
+        subject: "ZinaLog Test: " + subject,
         html,
       });
     }

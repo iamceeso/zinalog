@@ -211,7 +211,7 @@ function KeyRevealModal({
   return (
     <DialogShell
       title="API Key Created"
-      description="Copy this key now — it will not be shown again."
+      description="Copy this key now it will not be shown again."
       onClose={onClose}
       widthClassName="w-full max-w-[640px]"
       footer={
