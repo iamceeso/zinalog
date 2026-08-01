@@ -21,6 +21,7 @@ import {
   Users,
   LogOut,
   ShieldCheck,
+  Globe,
 } from "lucide-react";
 import { APP_VERSION_LABEL } from "@/lib/version";
 import type { SessionUser } from "@/lib/session-auth";
@@ -28,6 +29,7 @@ import type { SessionUser } from "@/lib/session-auth";
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/logs", label: "Logs", icon: ScrollText },
+  { href: "/dashboard/monitors", label: "Monitors", icon: Globe },
 ];
 
 const groupItems = [
