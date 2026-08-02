@@ -21,7 +21,12 @@
     "lib/auth-abuse.ts",
     "lib/admin-rate-limit.ts",
     "lib/email.ts",
-    "lib/export-csv.ts"
+    "lib/export-csv.ts",
+    "lib/monitor-fields.ts",
+    "lib/monitor-validation.ts",
+    "lib/monitor-checks.ts",
+    "lib/monitor-scheduler.ts",
+    "lib/notifications.ts"
   ],
   "exclude": ["node_modules", ".next", ".test-dist"]
 }

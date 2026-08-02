@@ -28,7 +28,7 @@ function parseExpectedStatus(spec: string): (code: number) => boolean {
   return (code) => ranges.some((r) => code >= r.min && code <= r.max);
 }
 
-function describeFetchError(err: unknown, timeoutSeconds: number): string {
+export function describeFetchError(err: unknown, timeoutSeconds: number): string {
   if (err instanceof Error) {
     if (err.name === "AbortError" || err.name === "TimeoutError") {
       return `Request timed out after ${timeoutSeconds}s`;
@@ -38,10 +38,24 @@ function describeFetchError(err: unknown, timeoutSeconds: number): string {
   return "Request failed";
 }
 
-interface SslInfo {
+export interface SslInfo {
   expires_at: string | null;
   issuer: string | null;
   valid: boolean;
+}
+
+export function buildSslInfo(
+  cert: tls.PeerCertificate | undefined,
+  authorized: boolean
+): SslInfo | null {
+  if (!cert || Object.keys(cert).length === 0) return null;
+
+  const issuerValue = cert.issuer?.O ?? cert.issuer?.CN ?? null;
+  return {
+    expires_at: cert.valid_to ? new Date(cert.valid_to).toISOString() : null,
+    issuer: Array.isArray(issuerValue) ? (issuerValue[0] ?? null) : issuerValue,
+    valid: authorized,
+  };
 }
 
 function getSslInfo(
@@ -69,17 +83,7 @@ function getSslInfo(
     };
 
     socket.once("secureConnect", () => {
-      const cert = socket.getPeerCertificate();
-      if (!cert || Object.keys(cert).length === 0) {
-        finish(null);
-        return;
-      }
-      const issuerValue = cert.issuer?.O ?? cert.issuer?.CN ?? null;
-      finish({
-        expires_at: cert.valid_to ? new Date(cert.valid_to).toISOString() : null,
-        issuer: Array.isArray(issuerValue) ? (issuerValue[0] ?? null) : issuerValue,
-        valid: socket.authorized,
-      });
+      finish(buildSslInfo(socket.getPeerCertificate(), socket.authorized));
     });
     socket.once("timeout", () => finish(null));
     socket.once("error", () => finish(null));
@@ -151,10 +155,21 @@ export async function checkHttp(monitor: Monitor): Promise<MonitorCheckResult> {
   return result;
 }
 
-function checkTcp(monitor: Monitor): Promise<MonitorCheckResult> {
+export interface TcpSocketLike {
+  setTimeout(ms: number): unknown;
+  once(event: "connect" | "timeout", listener: () => void): unknown;
+  once(event: "error", listener: (err: Error) => void): unknown;
+  connect(port: number, host: string): unknown;
+  destroy(): unknown;
+}
+
+export function checkTcp(
+  monitor: Monitor,
+  createSocket: () => TcpSocketLike = () => new net.Socket()
+): Promise<MonitorCheckResult> {
   return new Promise((resolve) => {
     const start = Date.now();
-    const socket = new net.Socket();
+    const socket = createSocket();
     const timeoutMs = Math.max(1, monitor.timeout_seconds) * 1000;
     let settled = false;
 
@@ -188,16 +203,29 @@ function checkTcp(monitor: Monitor): Promise<MonitorCheckResult> {
   });
 }
 
-async function checkPing(monitor: Monitor): Promise<MonitorCheckResult> {
+export type PingRunner = (
+  target: string,
+  timeoutSec: number
+) => Promise<{ stdout: string }>;
+
+async function defaultRunPing(
+  target: string,
+  timeoutSec: number
+): Promise<{ stdout: string }> {
+  return execFileAsync("ping", ["-c", "1", "-W", String(timeoutSec), target], {
+    timeout: (timeoutSec + 2) * 1000,
+  });
+}
+
+export async function checkPing(
+  monitor: Monitor,
+  runPing: PingRunner = defaultRunPing
+): Promise<MonitorCheckResult> {
   const start = Date.now();
   const timeoutSec = Math.max(1, monitor.timeout_seconds);
 
   try {
-    const { stdout } = await execFileAsync(
-      "ping",
-      ["-c", "1", "-W", String(timeoutSec), monitor.target],
-      { timeout: (timeoutSec + 2) * 1000 }
-    );
+    const { stdout } = await runPing(monitor.target, timeoutSec);
     const elapsed = Date.now() - start;
     const match = stdout.match(/time[=<]([\d.]+)\s*ms/i);
     const responseMs = match ? Math.round(parseFloat(match[1])) : elapsed;
