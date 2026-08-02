@@ -36,10 +36,12 @@ export async function sendTelegram(
   const service = log.service ?? "unknown";
   const emoji = LEVEL_EMOJI[log.level] ?? "⚪";
   const msg = [
-    `${emoji} *[${log.level.toUpperCase()}]* - ${escTg(log.message)}`,
-    `📦 *Service:* \`${escTg(service)}\``,
-    `🕐 \`${log.created_at}\``,
-    log.stack ? `\n\`\`\`\n${log.stack.slice(0, 800)}\n\`\`\`` : null,
+    `${emoji} *\\[${escTg(log.level.toUpperCase())}\\]* \\- ${escTg(log.message)}`,
+    `📦 *Service:* \`${escTgCode(service)}\``,
+    `🕐 \`${escTgCode(log.created_at)}\``,
+    log.stack
+      ? `\n\`\`\`\n${escTgCode(log.stack.slice(0, 800))}\n\`\`\``
+      : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -69,6 +71,10 @@ export async function sendTelegram(
 
 function escTg(text: string): string {
   return text.replace(/([_*[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+}
+
+function escTgCode(text: string): string {
+  return text.replace(/([`\\])/g, "\\$1");
 }
 
 //  Slack
