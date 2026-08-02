@@ -1,8 +1,10 @@
 import { Socket } from "node:net";
+import { Agent as HttpAgent } from "node:http";
+import { Agent as HttpsAgent } from "node:https";
 import { connect as tlsConnect, type PeerCertificate } from "node:tls";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { Agent, fetch as undiciFetch } from "undici";
+import axios from "axios";
 import { decryptSecret } from "./secret-crypto";
 import type { Monitor, MonitorCheckResult } from "./db";
 
@@ -32,6 +34,17 @@ export function describeFetchError(
   err: unknown,
   timeoutSeconds: number
 ): string {
+  if (axios.isAxiosError(err)) {
+    if (
+      err.code === "ECONNABORTED" ||
+      err.code === "ETIMEDOUT" ||
+      err.message.toLowerCase().includes("timeout")
+    ) {
+      return `Request timed out after ${timeoutSeconds}s`;
+    }
+    return err.message;
+  }
+
   if (err instanceof Error) {
     if (err.name === "AbortError" || err.name === "TimeoutError") {
       return `Request timed out after ${timeoutSeconds}s`;
@@ -137,51 +150,58 @@ export async function checkHttp(monitor: Monitor): Promise<MonitorCheckResult> {
       Buffer.from(`${monitor.basic_auth_user}:${pass}`).toString("base64");
   }
 
-  const agent = new Agent({
-    connect: { rejectUnauthorized: verifySsl, timeout: timeoutMs },
+  const httpAgent = new HttpAgent({ timeout: timeoutMs });
+  const httpsAgent = new HttpsAgent({
+    rejectUnauthorized: verifySsl,
+    timeout: timeoutMs,
   });
 
   const start = Date.now();
   let result: MonitorCheckResult;
 
   try {
-    const res = await undiciFetch(url, {
+    const res = await axios.request<unknown>({
+      url: url.toString(),
       method: monitor.method || "GET",
       headers,
-      redirect: monitor.follow_redirects ? "follow" : "manual",
-      signal: AbortSignal.timeout(timeoutMs),
-      dispatcher: agent,
+      timeout: timeoutMs,
+      maxRedirects: monitor.follow_redirects ? 5 : 0,
+      httpAgent,
+      httpsAgent,
+      proxy: false,
+      responseType: "stream",
+      validateStatus: () => true,
     });
     const responseTime = Date.now() - start;
-    if (res.status === 403 && res.headers.get("cf-mitigated") === "challenge") {
+
+    const responseBody = res.data as
+      { destroy?: () => void } | null | undefined;
+    responseBody?.destroy?.();
+
+    if (res.status === 403 && res.headers["cf-mitigated"] === "challenge") {
       result = {
         status: "blocked",
         status_code: res.status,
         response_time_ms: responseTime,
         error: "Cloudflare Managed Challenge",
       };
-      await res.body?.cancel();
-      return result;
+    } else {
+      const isExpected = parseExpectedStatus(monitor.expected_status)(
+        res.status
+      );
+      result = {
+        status: isExpected ? "up" : "down",
+        status_code: res.status,
+        response_time_ms: responseTime,
+        error: isExpected ? null : `Unexpected status code ${res.status}`,
+      };
     }
-
-    const isExpected = parseExpectedStatus(monitor.expected_status)(res.status);
-    result = {
-      status: isExpected ? "up" : "down",
-      status_code: res.status,
-      response_time_ms: responseTime,
-      error: isExpected ? null : `Unexpected status code ${res.status}`,
-    };
-    // Body hasn't been read, so this always resolves cleanly.
-    await res.body?.cancel();
   } catch (err) {
     result = {
       status: "down",
       response_time_ms: Date.now() - start,
       error: describeFetchError(err, monitor.timeout_seconds),
     };
-  } finally {
-    // Each call gets its own fresh Agent, so this is always its first close.
-    await agent.close();
   }
 
   if (url.protocol === "https:") {
