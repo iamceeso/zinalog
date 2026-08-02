@@ -12,10 +12,10 @@ type MigrationsModule = typeof import("../lib/migrations");
 const compiledMigrationsPath = path.resolve(__dirname, "../lib/migrations.js");
 const cjsRequire = createRequire(__filename);
 
-async function withTempCwd<T>(
-  fn: (tempDir: string) => Promise<T>
-): Promise<T> {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "zinalog-migrations-test-"));
+async function withTempCwd<T>(fn: (tempDir: string) => Promise<T>): Promise<T> {
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), "zinalog-migrations-test-")
+  );
   const previousCwd = process.cwd();
   process.chdir(tempDir);
   delete cjsRequire.cache[compiledMigrationsPath];
@@ -62,10 +62,9 @@ test("readMigrations parses, sorts, and filters migration files", async () => {
     );
     await writeMigration(
       tempDir,
-      "20260101000000_second.sql".replace("second", "aaa_first").replace(
-        "20260101000000",
-        "20250101000000"
-      ),
+      "20260101000000_second.sql"
+        .replace("second", "aaa_first")
+        .replace("20260101000000", "20250101000000"),
       "-- migrate:up\nCREATE TABLE first (id INTEGER);\n-- migrate:down\nDROP TABLE first;\n"
     );
     await fs.writeFile(
@@ -88,7 +87,11 @@ test("readMigrations parses, sorts, and filters migration files", async () => {
 
 test("readMigrations rejects filenames that don't match the timestamp_name.sql pattern", async () => {
   await withTempCwd(async (tempDir) => {
-    await writeMigration(tempDir, "not-a-valid-name.sql", "-- migrate:up\n-- migrate:down\n");
+    await writeMigration(
+      tempDir,
+      "not-a-valid-name.sql",
+      "-- migrate:up\n-- migrate:down\n"
+    );
     const migrations = loadMigrationsModule();
     await assert.rejects(
       migrations.readMigrations(),
@@ -148,10 +151,13 @@ test("readMigrations rethrows filesystem errors other than ENOENT", async () => 
     // fs.readdir fails with ENOTDIR instead of ENOENT.
     await fs.writeFile(path.join(tempDir, "migrations"), "not a directory");
     const migrations = loadMigrationsModule();
-    await assert.rejects(migrations.readMigrations(), (err: NodeJS.ErrnoException) => {
-      assert.equal(err.code, "ENOTDIR");
-      return true;
-    });
+    await assert.rejects(
+      migrations.readMigrations(),
+      (err: NodeJS.ErrnoException) => {
+        assert.equal(err.code, "ENOTDIR");
+        return true;
+      }
+    );
   });
 });
 
@@ -174,10 +180,10 @@ test("getMigrationStatuses reports applied and pending migrations", async () => 
       await db.exec(
         "CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, name TEXT NOT NULL, applied_at DATETIME DEFAULT (datetime('now')))"
       );
-      await db.run(
-        "INSERT INTO schema_migrations (id, name) VALUES (?, ?)",
-        ["20260101000000", "applied"]
-      );
+      await db.run("INSERT INTO schema_migrations (id, name) VALUES (?, ?)", [
+        "20260101000000",
+        "applied",
+      ]);
 
       const statuses = await migrations.getMigrationStatuses(db);
       assert.equal(statuses.length, 2);
@@ -213,7 +219,9 @@ test("runPendingMigrations applies pending migrations, skips empty up sections, 
       );
       assert.equal(tables.length, 1);
 
-      const recorded = await db.all("SELECT id FROM schema_migrations ORDER BY id");
+      const recorded = await db.all(
+        "SELECT id FROM schema_migrations ORDER BY id"
+      );
       assert.deepEqual(
         recorded.map((r: { id: string }) => r.id),
         ["20260101000000", "20260102000000"]

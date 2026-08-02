@@ -59,7 +59,10 @@ async function withNotificationModules(
   for (const p of ALL_COMPILED_PATHS) delete cjsRequire.cache[p];
 
   const fetchCalls: Array<{ url: string; init: RequestInit }> = [];
-  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init?: RequestInit
+  ) => {
     fetchCalls.push({ url: String(input), init: init ?? {} });
     return {
       ok: true,
@@ -149,9 +152,15 @@ test("sendSlack keeps Slack mrkdwn payload unchanged", async () => {
     }>(fetchCalls[0]);
 
     const blocks = body.attachments[0].blocks;
-    assert.equal(blocks[0].text?.text, "🔴 *ERROR* - Deploy failed - needs rollback");
+    assert.equal(
+      blocks[0].text?.text,
+      "🔴 *ERROR* - Deploy failed - needs rollback"
+    );
     assert.equal(blocks[1].fields?.[0].text, "*Service*\n`zinalog-test`");
-    assert.equal(blocks[1].fields?.[1].text, "*Time*\n`2026-08-02T12:34:56.000Z`");
+    assert.equal(
+      blocks[1].fields?.[1].text,
+      "*Time*\n`2026-08-02T12:34:56.000Z`"
+    );
   });
 });
 

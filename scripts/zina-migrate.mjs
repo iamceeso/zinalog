@@ -44,7 +44,7 @@ function parseMigrationId(filename) {
   const match = filename.match(/^(\d{14})_(.+)\.sql$/);
   if (!match) {
     throw new Error(
-      `Invalid migration filename "${filename}". Expected YYYYMMDDHHMMSS_name.sql`,
+      `Invalid migration filename "${filename}". Expected YYYYMMDDHHMMSS_name.sql`
     );
   }
 
@@ -59,7 +59,7 @@ function parseMigrationSql(filename, sql) {
 
   if (upIndex === -1 || downIndex === -1 || downIndex < upIndex) {
     throw new Error(
-      `Migration "${filename}" must contain ${upMarker} before ${downMarker}`,
+      `Migration "${filename}" must contain ${upMarker} before ${downMarker}`
     );
   }
 
@@ -124,7 +124,7 @@ async function readMigrations() {
 async function appliedMap(database) {
   await ensureMigrationsTable(database);
   const rows = await database.all(
-    "SELECT id, name, applied_at FROM schema_migrations ORDER BY id",
+    "SELECT id, name, applied_at FROM schema_migrations ORDER BY id"
   );
   return new Map(rows.map((row) => [row.id, row]));
 }
@@ -152,7 +152,7 @@ async function migrateUp() {
     const migrations = await readMigrations();
     const applied = await appliedMap(database);
     const pending = migrations.filter(
-      (migration) => !applied.has(migration.id),
+      (migration) => !applied.has(migration.id)
     );
 
     for (const migration of pending) {
@@ -163,7 +163,7 @@ async function migrateUp() {
         }
         await database.run(
           "INSERT INTO schema_migrations (id, name) VALUES (?, ?)",
-          [migration.id, migration.name],
+          [migration.id, migration.name]
         );
         await database.exec("COMMIT");
         console.log(`Applied ${migration.filename}`);
@@ -191,18 +191,18 @@ async function migrateDown(args) {
   try {
     const migrations = await readMigrations();
     const byId = new Map(
-      migrations.map((migration) => [migration.id, migration]),
+      migrations.map((migration) => [migration.id, migration])
     );
     const appliedRows = await database.all(
       "SELECT id, name FROM schema_migrations ORDER BY id DESC LIMIT ?",
-      [steps],
+      [steps]
     );
 
     for (const row of appliedRows) {
       const migration = byId.get(row.id);
       if (!migration) {
         throw new Error(
-          `Applied migration ${row.id} is missing from migrations/`,
+          `Applied migration ${row.id} is missing from migrations/`
         );
       }
       if (migration.downSql.length === 0) {
@@ -236,7 +236,7 @@ async function migrateDrop() {
   try {
     await ensureMigrationsTable(database);
     const appliedRows = await database.all(
-      "SELECT COUNT(*) AS count FROM schema_migrations",
+      "SELECT COUNT(*) AS count FROM schema_migrations"
     );
     const count = appliedRows[0]?.count ?? 0;
     if (count === 0) {

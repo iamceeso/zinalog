@@ -21,7 +21,10 @@ const compiledNotificationsPath = path.resolve(
   __dirname,
   "../lib/notifications.js"
 );
-const compiledDomainUtilsPath = path.resolve(__dirname, "../lib/domain-utils.js");
+const compiledDomainUtilsPath = path.resolve(
+  __dirname,
+  "../lib/domain-utils.js"
+);
 const compiledWhoisPath = path.resolve(__dirname, "../lib/whois.js");
 
 const ALL_COMPILED_PATHS = [
@@ -68,7 +71,10 @@ function baseMonitor(overrides: Partial<Monitor> = {}): Monitor {
   };
 }
 
-function mockModule(modulePath: string, exports: Record<string, unknown>): void {
+function mockModule(
+  modulePath: string,
+  exports: Record<string, unknown>
+): void {
   cjsRequire.cache[modulePath] = {
     id: modulePath,
     filename: modulePath,
@@ -217,7 +223,12 @@ test("buildStatusMessage formats down and up monitor alerts", () => {
     { level: "error", message: 'Monitor "api" is DOWN - connection refused' }
   );
   assert.deepEqual(
-    scheduler.buildStatusMessage(baseMonitor({ name: "api" }), "down", null, null),
+    scheduler.buildStatusMessage(
+      baseMonitor({ name: "api" }),
+      "down",
+      null,
+      null
+    ),
     { level: "error", message: 'Monitor "api" is DOWN' }
   );
   assert.deepEqual(
@@ -225,7 +236,12 @@ test("buildStatusMessage formats down and up monitor alerts", () => {
     { level: "info", message: 'Monitor "api" is back UP (42ms)' }
   );
   assert.deepEqual(
-    scheduler.buildStatusMessage(baseMonitor({ name: "api" }), "up", null, null),
+    scheduler.buildStatusMessage(
+      baseMonitor({ name: "api" }),
+      "up",
+      null,
+      null
+    ),
     { level: "info", message: 'Monitor "api" is back UP' }
   );
 });
@@ -238,7 +254,11 @@ test("runAndRecordMonitorCheck records a check and sends a status-change notific
     error: "unavailable",
   };
   const { scheduler, calls } = loadSchedulerWithMocks({ checkResult });
-  const monitor = baseMonitor({ id: 7, name: "billing", target: "https://billing.test" });
+  const monitor = baseMonitor({
+    id: 7,
+    name: "billing",
+    target: "https://billing.test",
+  });
 
   const outcome = await scheduler.runAndRecordMonitorCheck(monitor);
 
@@ -260,7 +280,10 @@ test("runAndRecordMonitorCheck records a check and sends a status-change notific
     }),
     created_at: (calls.notifications[0] as { created_at: string }).created_at,
   });
-  assert.match((calls.notifications[0] as { created_at: string }).created_at, /^\d{4}-/);
+  assert.match(
+    (calls.notifications[0] as { created_at: string }).created_at,
+    /^\d{4}-/
+  );
 });
 
 test("runAndRecordMonitorCheck skips notification when the guard conditions are false", async () => {
@@ -283,7 +306,9 @@ test("runAndRecordMonitorCheck skips notification when the guard conditions are 
       check: { status: "down" },
     },
   });
-  await disabled.scheduler.runAndRecordMonitorCheck(baseMonitor({ notify_enabled: 0 }));
+  await disabled.scheduler.runAndRecordMonitorCheck(
+    baseMonitor({ notify_enabled: 0 })
+  );
   assert.equal(disabled.calls.notifications.length, 0);
 
   const pending = loadSchedulerWithMocks({
@@ -363,7 +388,8 @@ test("runDueChecks processes due monitors in batches and logs per-monitor failur
   assert.ok(
     errors.some(
       (call) =>
-        call[0] === `[monitor-scheduler] check failed for monitor ${failed.id}` &&
+        call[0] ===
+          `[monitor-scheduler] check failed for monitor ${failed.id}` &&
         call[1] === checkError
     )
   );
@@ -372,7 +398,10 @@ test("runDueChecks processes due monitors in batches and logs per-monitor failur
 test("extractHostname returns raw non-http targets, parsed http hostnames, and null for invalid URLs", () => {
   const { scheduler } = loadSchedulerWithMocks({});
 
-  assert.equal(scheduler.extractHostname(baseMonitor({ type: "tcp", target: "db.local" })), "db.local");
+  assert.equal(
+    scheduler.extractHostname(baseMonitor({ type: "tcp", target: "db.local" })),
+    "db.local"
+  );
   assert.equal(
     scheduler.extractHostname(
       baseMonitor({ type: "http", target: "https://status.example.com/path" })
@@ -380,7 +409,9 @@ test("extractHostname returns raw non-http targets, parsed http hostnames, and n
     "status.example.com"
   );
   assert.equal(
-    scheduler.extractHostname(baseMonitor({ type: "http", target: "not a url" })),
+    scheduler.extractHostname(
+      baseMonitor({ type: "http", target: "not a url" })
+    ),
     null
   );
 });
@@ -499,10 +530,7 @@ test("runDueDomainRefreshes logs lookup failures and stamps nulls", async () => 
   }
 
   assert.deepEqual(errors, [
-    [
-      "[monitor-scheduler] domain refresh failed for monitor 6",
-      lookupError,
-    ],
+    ["[monitor-scheduler] domain refresh failed for monitor 6", lookupError],
   ]);
 });
 

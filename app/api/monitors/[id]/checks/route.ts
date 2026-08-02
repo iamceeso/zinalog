@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMonitorById, getMonitorUptimeStats, listMonitorChecks } from "@/lib/db";
+import {
+  getMonitorById,
+  getMonitorUptimeStats,
+  listMonitorChecks,
+} from "@/lib/db";
 import { requireApiUser } from "@/lib/session-auth";
 
 export async function GET(

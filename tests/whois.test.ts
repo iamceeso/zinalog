@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getDomainInfo, rawWhoisQuery, type WhoisSocketLike } from "../lib/whois";
+import {
+  getDomainInfo,
+  rawWhoisQuery,
+  type WhoisSocketLike,
+} from "../lib/whois";
 
 //  rawWhoisQuery
 
@@ -83,7 +87,12 @@ test("rawWhoisQuery resolves null on timeout or error, ignoring late duplicate e
     },
   };
 
-  const result = await rawWhoisQuery("whois.example.com", "example.com", 1000, () => fakeSocket);
+  const result = await rawWhoisQuery(
+    "whois.example.com",
+    "example.com",
+    1000,
+    () => fakeSocket
+  );
   assert.equal(result, null);
 });
 
@@ -141,7 +150,10 @@ test("getDomainInfo falls back to the IANA server itself when no referral is pre
 
   const result = await getDomainInfo("example.com", 1000, query);
 
-  assert.equal(result?.expires_at, new Date("2027-03-05T00:00:00Z").toISOString());
+  assert.equal(
+    result?.expires_at,
+    new Date("2027-03-05T00:00:00Z").toISOString()
+  );
   assert.deepEqual(calls, ["whois.iana.org", "whois.iana.org"]);
 });
 

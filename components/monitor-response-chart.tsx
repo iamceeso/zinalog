@@ -32,13 +32,11 @@ export default function MonitorResponseChart({
 }: {
   checks: ClientMonitorCheck[];
 }) {
-  const data = [...checks]
-    .reverse()
-    .map((c) => ({
-      label: formatTime(c.checked_at),
-      responseTime: c.response_time_ms ?? 0,
-      status: c.status,
-    }));
+  const data = [...checks].reverse().map((c) => ({
+    label: formatTime(c.checked_at),
+    responseTime: c.response_time_ms ?? 0,
+    status: c.status,
+  }));
 
   if (data.length === 0) {
     return (
@@ -50,7 +48,10 @@ export default function MonitorResponseChart({
 
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+      <LineChart
+        data={data}
+        margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+      >
         <XAxis
           dataKey="label"
           tick={AXIS_TICK}
@@ -86,7 +87,9 @@ export default function MonitorResponseChart({
                 cx={cx}
                 cy={cy}
                 r={2.5}
-                fill={payload.status === "down" ? "var(--error)" : "var(--accent)"}
+                fill={
+                  payload.status === "down" ? "var(--error)" : "var(--accent)"
+                }
                 stroke="none"
               />
             );

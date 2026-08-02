@@ -104,7 +104,9 @@ test("monitorUniqueConstraintField identifies monitor unique constraint fields",
   );
   assert.equal(
     monitorUniqueConstraintField(
-      new Error("SQLITE_CONSTRAINT: UNIQUE constraint failed: monitors.owner_id")
+      new Error(
+        "SQLITE_CONSTRAINT: UNIQUE constraint failed: monitors.owner_id"
+      )
     ),
     null
   );

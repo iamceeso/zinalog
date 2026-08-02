@@ -2,7 +2,15 @@ import type { MonitorType } from "./db";
 import { isMaskedSecret } from "./monitor-fields";
 
 const VALID_TYPES: MonitorType[] = ["http", "tcp", "ping"];
-const VALID_METHODS = ["GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"];
+const VALID_METHODS = [
+  "GET",
+  "POST",
+  "HEAD",
+  "PUT",
+  "DELETE",
+  "PATCH",
+  "OPTIONS",
+];
 const STATUS_SPEC_RE = /^\d{3}(-\d{3})?(\s*,\s*\d{3}(-\d{3})?)*$/;
 const HOSTNAME_RE = /^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/;
 
@@ -78,10 +86,7 @@ export function validateMonitorPayload(body: Record<string, unknown>): {
       const rawHeaders = body.headers;
       if (rawHeaders === null || rawHeaders === "") {
         headers = null;
-      } else if (
-        typeof rawHeaders === "string" &&
-        isMaskedSecret(rawHeaders)
-      ) {
+      } else if (typeof rawHeaders === "string" && isMaskedSecret(rawHeaders)) {
         headers = undefined;
       } else if (typeof rawHeaders === "object") {
         const entries = Object.entries(rawHeaders as Record<string, unknown>);

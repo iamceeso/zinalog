@@ -20,7 +20,7 @@ function parseMigrationId(filename: string): { id: string; name: string } {
   const match = filename.match(/^(\d{14})_(.+)\.sql$/);
   if (!match) {
     throw new Error(
-      `Invalid migration filename "${filename}". Expected YYYYMMDDHHMMSS_name.sql`,
+      `Invalid migration filename "${filename}". Expected YYYYMMDDHHMMSS_name.sql`
     );
   }
 
@@ -29,7 +29,7 @@ function parseMigrationId(filename: string): { id: string; name: string } {
 
 function parseMigrationSql(
   filename: string,
-  sql: string,
+  sql: string
 ): {
   upSql: string;
   downSql: string;
@@ -41,7 +41,7 @@ function parseMigrationSql(
 
   if (upIndex === -1 || downIndex === -1 || downIndex < upIndex) {
     throw new Error(
-      `Migration "${filename}" must contain ${upMarker} before ${downMarker}`,
+      `Migration "${filename}" must contain ${upMarker} before ${downMarker}`
     );
   }
 
@@ -85,7 +85,7 @@ export async function readMigrations(): Promise<Migration[]> {
         const { upSql, downSql } = parseMigrationSql(filename, sql);
 
         return { id, name, filename, upSql, downSql };
-      }),
+      })
   );
 
   const seen = new Set<string>();
@@ -100,7 +100,7 @@ export async function readMigrations(): Promise<Migration[]> {
 }
 
 export async function getMigrationStatuses(
-  database: SqliteDatabase,
+  database: SqliteDatabase
 ): Promise<MigrationStatus[]> {
   await ensureMigrationsTable(database);
 
@@ -114,7 +114,7 @@ export async function getMigrationStatuses(
     applied_at: string;
   }>;
   const applied = new Map(
-    appliedRows.map((row) => [row.id, row.applied_at] as const),
+    appliedRows.map((row) => [row.id, row.applied_at] as const)
   );
 
   return (await readMigrations()).map((migration) => ({
@@ -124,7 +124,7 @@ export async function getMigrationStatuses(
 }
 
 export async function runPendingMigrations(
-  database: SqliteDatabase,
+  database: SqliteDatabase
 ): Promise<Migration[]> {
   await ensureMigrationsTable(database);
 
@@ -139,7 +139,7 @@ export async function runPendingMigrations(
       }
       await database.run(
         "INSERT INTO schema_migrations (id, name) VALUES (?, ?)",
-        [migration.id, migration.name],
+        [migration.id, migration.name]
       );
       await database.exec("COMMIT");
     } catch (error) {

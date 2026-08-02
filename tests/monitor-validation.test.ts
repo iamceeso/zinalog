@@ -78,7 +78,9 @@ test("validateMonitorPayload validates http target URLs", () => {
     wrongProtocol.errors.some((e) => e.includes("must use http:// or https://"))
   );
 
-  const ok = validateMonitorPayload(baseHttp({ target: "https://example.com" }));
+  const ok = validateMonitorPayload(
+    baseHttp({ target: "https://example.com" })
+  );
   assert.equal(ok.errors.length, 0);
   assert.equal(ok.value?.target, "https://example.com/");
 });
@@ -158,10 +160,7 @@ test("validateMonitorPayload trims basic auth username and defaults to null", ()
       ?.basic_auth_user,
     null
   );
-  assert.equal(
-    validateMonitorPayload(baseHttp()).value?.basic_auth_user,
-    null
-  );
+  assert.equal(validateMonitorPayload(baseHttp()).value?.basic_auth_user, null);
 });
 
 test("validateMonitorPayload handles basic auth password states", () => {
@@ -215,13 +214,13 @@ test("validateMonitorPayload defaults and validates expected_status", () => {
   const invalid = validateMonitorPayload(
     baseHttp({ expected_status: "not-a-status" })
   );
-  assert.ok(
-    invalid.errors.some((e) => e.startsWith("expected_status:"))
-  );
+  assert.ok(invalid.errors.some((e) => e.startsWith("expected_status:")));
 });
 
 test("validateMonitorPayload rejects scheme/whitespace and malformed hosts for tcp/ping targets", () => {
-  const withScheme = validateMonitorPayload(baseTcp({ target: "tcp://10.0.0.5" }));
+  const withScheme = validateMonitorPayload(
+    baseTcp({ target: "tcp://10.0.0.5" })
+  );
   assert.ok(
     withScheme.errors.some((e) => e.includes("bare hostname or IP address"))
   );
@@ -231,7 +230,9 @@ test("validateMonitorPayload rejects scheme/whitespace and malformed hosts for t
     withSpace.errors.some((e) => e.includes("bare hostname or IP address"))
   );
 
-  const malformedHost = validateMonitorPayload(basePing({ target: "!!!bad!!!" }));
+  const malformedHost = validateMonitorPayload(
+    basePing({ target: "!!!bad!!!" })
+  );
   assert.ok(
     malformedHost.errors.some((e) => e.includes("bare hostname or IP address"))
   );
@@ -310,9 +311,7 @@ test("validateMonitorPayload validates timeout_seconds bounds and relation to in
   const tooHigh = validateMonitorPayload(baseHttp({ timeout_seconds: 121 }));
   assert.ok(tooHigh.errors.some((e) => e.startsWith("timeout_seconds:")));
 
-  const nonInteger = validateMonitorPayload(
-    baseHttp({ timeout_seconds: 5.5 })
-  );
+  const nonInteger = validateMonitorPayload(baseHttp({ timeout_seconds: 5.5 }));
   assert.ok(nonInteger.errors.some((e) => e.startsWith("timeout_seconds:")));
 
   const exceedsInterval = validateMonitorPayload(
