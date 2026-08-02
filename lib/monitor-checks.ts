@@ -104,10 +104,13 @@ export async function checkHttp(monitor: Monitor): Promise<MonitorCheckResult> {
   const timeoutMs = Math.max(1, monitor.timeout_seconds) * 1000;
   const verifySsl = monitor.verify_ssl !== 0;
 
-  let headers: Record<string, string> = {};
+  let headers: Record<string, string> = {
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent": "ZinaLog/0.1 (+https://zinalog.com)",
+  };
   if (monitor.headers) {
     try {
-      headers = JSON.parse(decryptSecret(monitor.headers));
+      headers = { ...headers, ...JSON.parse(decryptSecret(monitor.headers)) };
     } catch {
       /* ignore malformed stored headers */
     }

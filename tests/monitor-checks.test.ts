@@ -355,6 +355,39 @@ test("checkHttp sends decrypted custom headers and ignores malformed stored head
   );
 });
 
+test("checkHttp sends default browser-compatible headers that custom headers can override", async () => {
+  await withHttpServer(
+    (req, res) => {
+      const hasUserAgent = req.headers["user-agent"] === "ZinaLog/0.1 (+https://zinalog.com)";
+      const hasAccept = req.headers["accept"]?.includes("text/html");
+      res.writeHead(hasUserAgent && hasAccept ? 200 : 403);
+      res.end();
+    },
+    async (port) => {
+      const result = await checkHttp(
+        baseMonitor({ target: `http://127.0.0.1:${port}/` })
+      );
+      assert.equal(result.status, "up");
+    }
+  );
+
+  await withHttpServer(
+    (req, res) => {
+      res.writeHead(req.headers["user-agent"] === "CustomAgent/1.0" ? 200 : 403);
+      res.end();
+    },
+    async (port) => {
+      const result = await checkHttp(
+        baseMonitor({
+          target: `http://127.0.0.1:${port}/`,
+          headers: JSON.stringify({ "User-Agent": "CustomAgent/1.0" }),
+        })
+      );
+      assert.equal(result.status, "up");
+    }
+  );
+});
+
 test("checkHttp sends a Basic Authorization header, defaulting to an empty password", async () => {
   await withHttpServer(
     (req, res) => {
