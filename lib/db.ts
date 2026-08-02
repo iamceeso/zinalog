@@ -1950,30 +1950,6 @@ export async function recordMonitorCheck(
 ): Promise<MonitorCheckOutcome> {
   const database = await getDb();
 
-  await database.run(
-    `INSERT INTO monitor_checks (monitor_id, status, status_code, response_time_ms, error)
-     VALUES (?, ?, ?, ?, ?)`,
-    [
-      monitor.id,
-      result.status,
-      result.status_code ?? null,
-      result.response_time_ms ?? null,
-      result.error ?? null,
-    ]
-  );
-
-  await database.run(
-    `DELETE FROM monitor_checks
-     WHERE monitor_id = ?
-     AND id NOT IN (
-       SELECT id FROM monitor_checks
-       WHERE monitor_id = ?
-       ORDER BY id DESC
-       LIMIT ?
-     )`,
-    [monitor.id, monitor.id, MONITOR_CHECKS_PER_MONITOR_LIMIT]
-  );
-
   const previousStatus = monitor.status;
   let newStatus: MonitorStatus = previousStatus;
   let consecutiveFails = monitor.consecutive_fails;
@@ -2015,10 +1991,36 @@ export async function recordMonitorCheck(
 
   updateParams.push(monitor.id);
 
-  await database.run(
-    `UPDATE monitors SET ${updateFields.join(", ")} WHERE id = ?`,
-    updateParams
-  );
+  await withTransaction(database, async () => {
+    await database.run(
+      `INSERT INTO monitor_checks (monitor_id, status, status_code, response_time_ms, error)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        monitor.id,
+        result.status,
+        result.status_code ?? null,
+        result.response_time_ms ?? null,
+        result.error ?? null,
+      ]
+    );
+
+    await database.run(
+      `DELETE FROM monitor_checks
+       WHERE monitor_id = ?
+       AND id NOT IN (
+         SELECT id FROM monitor_checks
+         WHERE monitor_id = ?
+         ORDER BY id DESC
+         LIMIT ?
+       )`,
+      [monitor.id, monitor.id, MONITOR_CHECKS_PER_MONITOR_LIMIT]
+    );
+
+    await database.run(
+      `UPDATE monitors SET ${updateFields.join(", ")} WHERE id = ?`,
+      updateParams
+    );
+  });
 
   return { previousStatus, newStatus, statusChanged, check: result };
 }

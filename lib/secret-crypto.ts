@@ -21,6 +21,10 @@ export const SENSITIVE_SETTING_KEYS = new Set([
   "webhook_headers",
 ]);
 
+export function isEncryptionKeyConfigured(): boolean {
+  return Boolean(process.env.ENCRYPTION_KEY);
+}
+
 function getEncryptionKey(): Buffer | null {
   const hex = process.env.ENCRYPTION_KEY;
   if (!hex) return null;
@@ -32,9 +36,23 @@ function getEncryptionKey(): Buffer | null {
   return Buffer.from(hex, "hex");
 }
 
+let warnedAboutMissingKey = false;
+function warnMissingKeyOnce(): void {
+  if (warnedAboutMissingKey) return;
+  warnedAboutMissingKey = true;
+  console.warn(
+    "[secret-crypto] ENCRYPTION_KEY is not set — sensitive settings " +
+      "(SMTP credentials, webhook URLs, monitor auth secrets) are being " +
+      "stored in plain text. Set ENCRYPTION_KEY to encrypt them at rest."
+  );
+}
+
 export function encryptSecret(plaintext: string): string {
   const key = getEncryptionKey();
-  if (!key) return plaintext;
+  if (!key) {
+    warnMissingKeyOnce();
+    return plaintext;
+  }
   if (!plaintext) return plaintext;
 
   const iv = randomBytes(IV_BYTES);

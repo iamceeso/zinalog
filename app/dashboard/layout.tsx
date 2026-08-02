@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import Sidebar from "@/components/sidebar";
 import { requireUser } from "@/lib/session-auth";
+import { isEncryptionKeyConfigured } from "@/lib/secret-crypto";
 
 export default async function DashboardLayout({
   children,
@@ -11,7 +12,10 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar currentUser={currentUser} />
+      <Sidebar
+        currentUser={currentUser}
+        encryptionConfigured={isEncryptionKeyConfigured()}
+      />
       <main className="dash-main">{children}</main>
     </div>
   );

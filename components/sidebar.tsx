@@ -59,6 +59,18 @@ const groupItems = [
   },
 ];
 
+function EncryptionWarning() {
+  return (
+    <div
+      className="flex items-start gap-1.5 text-[10.5px] text-(--warning) mb-1.5"
+      title="Set the ENCRYPTION_KEY environment variable to encrypt these at rest"
+    >
+      <TriangleAlert size={12} className="shrink-0 mt-0.5" />
+      <span>ENCRYPTION_KEY not set, secrets stored in plain text</span>
+    </div>
+  );
+}
+
 function NavLinks({
   onNavigate,
   currentUser,
@@ -225,7 +237,13 @@ function NavLinks({
   );
 }
 
-export default function Sidebar({ currentUser }: { currentUser: SessionUser }) {
+export default function Sidebar({
+  currentUser,
+  encryptionConfigured,
+}: {
+  currentUser: SessionUser;
+  encryptionConfigured: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerPath, setDrawerPath] = useState<string | null>(null);
@@ -293,6 +311,12 @@ export default function Sidebar({ currentUser }: { currentUser: SessionUser }) {
         </div>
 
         <NavLinks currentUser={currentUser} />
+
+        {!encryptionConfigured && currentUser.role === "admin" && (
+          <div className="px-5 py-2.5 border-t border-(--border)">
+            <EncryptionWarning />
+          </div>
+        )}
 
         <div className="px-5 py-3 border-t border-(--border) flex items-center gap-2">
           <div className="flex-1 min-w-0">
@@ -391,6 +415,12 @@ export default function Sidebar({ currentUser }: { currentUser: SessionUser }) {
             currentUser={currentUser}
             onNavigate={() => setDrawerPath(null)}
           />
+
+          {!encryptionConfigured && currentUser.role === "admin" && (
+            <div className="px-4.5 py-2.5 border-t border-(--border)">
+              <EncryptionWarning />
+            </div>
+          )}
 
           <div className="px-4.5 py-3 border-t border-(--border) flex items-center gap-2">
             <div className="flex-1 min-w-0">
