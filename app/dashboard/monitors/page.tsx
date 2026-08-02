@@ -12,6 +12,7 @@ import {
   Radio,
   Globe,
   Network,
+  Copy,
 } from "lucide-react";
 import ConfirmModal from "@/components/confirm-modal";
 import MonitorFormModal from "@/components/monitor-form-modal";
@@ -86,6 +87,7 @@ export default function MonitorsPage() {
     null
   );
   const [runningId, setRunningId] = useState<number | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
   const [confirm, setConfirm] = useState<{
     title: string;
     message: string;
@@ -169,6 +171,23 @@ export default function MonitorsPage() {
       setMonitors(data.monitors ?? []);
     } finally {
       setRunningId(null);
+    }
+  };
+
+  const handleDuplicate = async (monitor: ClientMonitor) => {
+    setDuplicatingId(monitor.id);
+    try {
+      const res = await fetch(`/api/monitors/${monitor.id}/duplicate`, {
+        method: "POST",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.monitor) {
+        handleSaved(data.monitor);
+        setShowFormFor(data.monitor);
+      }
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -292,6 +311,14 @@ export default function MonitorsPage() {
                             ) : (
                               <Play size={13} />
                             )}
+                          </button>
+                          <button
+                            onClick={() => handleDuplicate(monitor)}
+                            disabled={duplicatingId === monitor.id}
+                            title="Duplicate"
+                            className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
+                          >
+                            <Copy size={13} />
                           </button>
                           <button
                             onClick={() => setShowFormFor(monitor)}
