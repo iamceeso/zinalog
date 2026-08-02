@@ -1,5 +1,5 @@
-import net from "node:net";
-import tls from "node:tls";
+import { Socket } from "node:net";
+import { connect as tlsConnect, type PeerCertificate } from "node:tls";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Agent, fetch as undiciFetch } from "undici";
@@ -45,7 +45,7 @@ export interface SslInfo {
 }
 
 export function buildSslInfo(
-  cert: tls.PeerCertificate | undefined,
+  cert: PeerCertificate | undefined,
   authorized: boolean
 ): SslInfo | null {
   if (!cert || Object.keys(cert).length === 0) return null;
@@ -60,7 +60,7 @@ export function buildSslInfo(
 
 export interface TlsSocketLike {
   once(event: "secureConnect" | "timeout" | "error", listener: () => void): unknown;
-  getPeerCertificate(): tls.PeerCertificate;
+  getPeerCertificate(): PeerCertificate;
   authorized: boolean;
   destroy(): unknown;
 }
@@ -71,7 +71,7 @@ export function getSslInfo(
   timeoutMs: number,
   rejectUnauthorized: boolean,
   connect: () => TlsSocketLike = () =>
-    tls.connect({
+    tlsConnect({
       host: hostname,
       port,
       servername: hostname,
@@ -176,7 +176,7 @@ export interface TcpSocketLike {
 
 export function checkTcp(
   monitor: Monitor,
-  createSocket: () => TcpSocketLike = () => new net.Socket()
+  createSocket: () => TcpSocketLike = () => new Socket()
 ): Promise<MonitorCheckResult> {
   return new Promise((resolve) => {
     const start = Date.now();

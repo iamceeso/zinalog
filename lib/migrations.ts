@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import { readdir, readFile } from "fs/promises";
+import { join } from "path";
 import type { Database as SqliteDatabase } from "sqlite";
 
 export interface Migration {
@@ -14,7 +14,7 @@ export interface MigrationStatus extends Migration {
   appliedAt: string | null;
 }
 
-const MIGRATIONS_DIR = path.join(process.cwd(), "migrations");
+const MIGRATIONS_DIR = join(process.cwd(), "migrations");
 
 function parseMigrationId(filename: string): { id: string; name: string } {
   const match = filename.match(/^(\d{14})_(.+)\.sql$/);
@@ -65,7 +65,7 @@ export async function readMigrations(): Promise<Migration[]> {
   let entries: string[];
 
   try {
-    entries = await fs.readdir(MIGRATIONS_DIR);
+    entries = await readdir(MIGRATIONS_DIR);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
@@ -79,7 +79,7 @@ export async function readMigrations(): Promise<Migration[]> {
       .sort((left, right) => left.localeCompare(right))
       .map(async (filename) => {
         const { id, name } = parseMigrationId(filename);
-        const sql = await fs.readFile(path.join(MIGRATIONS_DIR, filename), {
+        const sql = await readFile(join(MIGRATIONS_DIR, filename), {
           encoding: "utf8",
         });
         const { upSql, downSql } = parseMigrationSql(filename, sql);

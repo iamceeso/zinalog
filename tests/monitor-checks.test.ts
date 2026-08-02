@@ -7,7 +7,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import type tls from "node:tls";
+import type { PeerCertificate } from "node:tls";
 import {
   buildSslInfo,
   checkHttp,
@@ -566,7 +566,7 @@ test("getSslInfo ignores a late duplicate event once it has already settled", as
       return {
         valid_to: "Jan 1 00:00:00 2030 GMT",
         issuer: { O: "Acme Corp" },
-      } as tls.PeerCertificate;
+      } as PeerCertificate;
     },
     authorized: true,
     destroy() {

@@ -325,6 +325,29 @@ test("runDueChecks does not process paused (inactive) monitors", async () => {
 
 test("runDueChecks logs and continues when one monitor in the batch fails to record", async () => {
   await withSchedulerModules(async ({ db, scheduler }) => {
+    // A handshake (not a timing race) guarantees the monitor row is deleted
+    // strictly before its in-flight check tries to write the result back,
+    // which reliably triggers the foreign-key failure in recordMonitorCheck.
+    let resolveRequestReceived!: () => void;
+    const requestReceived = new Promise<void>((resolve) => {
+      resolveRequestReceived = resolve;
+    });
+    let resolveRelease!: () => void;
+    const releaseGate = new Promise<void>((resolve) => {
+      resolveRelease = resolve;
+    });
+
+    const server = http.createServer((_req, res) => {
+      resolveRequestReceived();
+      void releaseGate.then(() => {
+        res.writeHead(200);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+
     const survivor = await db.createMonitor({
       name: "survivor-monitor",
       type: "ping",
@@ -334,10 +357,10 @@ test("runDueChecks logs and continues when one monitor in the batch fails to rec
     });
     const doomed = await db.createMonitor({
       name: "doomed-monitor",
-      type: "ping",
-      target: "127.0.0.3",
+      type: "http",
+      target: `http://127.0.0.1:${port}/`,
       interval_seconds: 60,
-      timeout_seconds: 2,
+      timeout_seconds: 5,
     });
 
     const originalConsoleError = console.error;
@@ -349,12 +372,13 @@ test("runDueChecks logs and continues when one monitor in the batch fails to rec
     try {
       const database = await db.getDb();
       const runPromise = scheduler.runDueChecks();
-      // The ping check spawns a real child process, giving this a window to
-      // remove the row before recordMonitorCheck writes back to it.
+      await requestReceived;
       await database.run("DELETE FROM monitors WHERE id = ?", [doomed.id]);
+      resolveRelease();
       await assert.doesNotReject(runPromise);
     } finally {
       console.error = originalConsoleError;
+      await new Promise<void>((resolve) => server.close(() => resolve()));
     }
 
     assert.ok(
@@ -416,5 +440,44 @@ test("ensureMonitorSchedulerStarted tolerates an interval handle without unref",
     }
 
     await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+});
+
+test("the scheduler's tick logs and swallows a failure from runDueChecks itself", async () => {
+  await withSchedulerModules(async ({ db, scheduler }) => {
+    const originalConsoleError = console.error;
+    const originalSetInterval = global.setInterval;
+    const originalClearInterval = global.clearInterval;
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+    let capturedHandle: NodeJS.Timeout | undefined;
+    (global as unknown as { setInterval: unknown }).setInterval = (
+      ...args: Parameters<typeof originalSetInterval>
+    ) => {
+      capturedHandle = originalSetInterval(...args);
+      return capturedHandle;
+    };
+
+    try {
+      // Close the database out from under the scheduler so that the very
+      // first getDueMonitors() call inside tick()'s runDueChecks() rejects.
+      const database = await db.getDb();
+      await database.close();
+
+      assert.doesNotThrow(() => scheduler.ensureMonitorSchedulerStarted());
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } finally {
+      if (capturedHandle) originalClearInterval(capturedHandle);
+      global.setInterval = originalSetInterval;
+      global.clearInterval = originalClearInterval;
+      console.error = originalConsoleError;
+    }
+
+    assert.ok(
+      errors.some((call) => call[0] === "[monitor-scheduler] tick failed"),
+      "expected the top-level tick failure to be logged"
+    );
   });
 });

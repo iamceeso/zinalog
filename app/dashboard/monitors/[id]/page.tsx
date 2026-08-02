@@ -10,6 +10,8 @@ import {
   RefreshCw,
   ShieldCheck,
   ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import ConfirmModal from "@/components/confirm-modal";
 import MonitorFormModal from "@/components/monitor-form-modal";
@@ -57,6 +59,8 @@ export default function MonitorDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [running, setRunning] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [checksPageSize, setChecksPageSize] = useState(10);
+  const [checksPage, setChecksPage] = useState(1);
 
   const applyMonitorResponse = useCallback(
     (data: {
@@ -146,6 +150,13 @@ export default function MonitorDetailPage() {
   }
 
   const sslDays = monitor.ssl_expires_at ? daysUntil(monitor.ssl_expires_at) : null;
+
+  const checksTotalPages = Math.max(1, Math.ceil(checks.length / checksPageSize));
+  const checksPageClamped = Math.min(checksPage, checksTotalPages);
+  const visibleChecks = checks.slice(
+    (checksPageClamped - 1) * checksPageSize,
+    checksPageClamped * checksPageSize
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -266,10 +277,10 @@ export default function MonitorDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {checks.slice(0, 30).map((check, i) => (
+              {visibleChecks.map((check, i) => (
                 <tr
                   key={check.id}
-                  className={i < 29 && i < checks.length - 1 ? "border-b border-(--border)" : ""}
+                  className={i < visibleChecks.length - 1 ? "border-b border-(--border)" : ""}
                 >
                   <td className="px-3.5 py-2.5">
                     <span
@@ -299,6 +310,60 @@ export default function MonitorDetailPage() {
               ))}
             </tbody>
           </table>
+        )}
+        {checks.length > 0 && (
+          <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3 border-t border-(--border)">
+            <div className="flex items-center gap-2 text-[12px] text-(--text-dim)">
+              <span>
+                Showing {(checksPageClamped - 1) * checksPageSize + 1}–
+                {Math.min(checksPageClamped * checksPageSize, checks.length)} of{" "}
+                {checks.length}
+              </span>
+              <select
+                value={checksPageSize}
+                onChange={(e) => {
+                  setChecksPageSize(Number(e.target.value));
+                  setChecksPage(1);
+                }}
+                className="bg-(--bg-surface) border border-(--border) rounded-md px-2 py-1 text-[12px] text-(--text-muted) outline-none cursor-pointer"
+              >
+                {[10, 25, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n} / page
+                  </option>
+                ))}
+              </select>
+            </div>
+            {checksTotalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={checksPageClamped <= 1}
+                  onClick={() => setChecksPage((p) => Math.max(1, p - 1))}
+                  className={`bg-(--bg-surface) border border-(--border) rounded-md px-2 py-1.5 flex items-center ${
+                    checksPageClamped <= 1
+                      ? "text-(--text-dim) cursor-not-allowed opacity-50"
+                      : "text-foreground cursor-pointer hover:bg-(--bg-hover)"
+                  }`}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-[12px] text-(--text-dim) px-2">
+                  Page {checksPageClamped} of {checksTotalPages}
+                </span>
+                <button
+                  disabled={checksPageClamped >= checksTotalPages}
+                  onClick={() => setChecksPage((p) => Math.min(checksTotalPages, p + 1))}
+                  className={`bg-(--bg-surface) border border-(--border) rounded-md px-2 py-1.5 flex items-center ${
+                    checksPageClamped >= checksTotalPages
+                      ? "text-(--text-dim) cursor-not-allowed opacity-50"
+                      : "text-foreground cursor-pointer hover:bg-(--bg-hover)"
+                  }`}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
