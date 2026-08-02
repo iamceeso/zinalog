@@ -64,8 +64,12 @@ async function withSchedulerModules(
     // Let any fire-and-forget notification calls settle before closing the DB.
     await new Promise((resolve) => setTimeout(resolve, 30));
   } finally {
-    const database = await db.getDb();
-    await database.close();
+    try {
+      const database = await db.getDb();
+      await database.close();
+    } catch {
+      /* already closed by the test itself */
+    }
     delete process.env.NODE_ENV;
     delete process.env.DATABASE_PATH;
     delete process.env.ENCRYPTION_KEY;
@@ -316,6 +320,54 @@ test("runDueChecks does not process paused (inactive) monitors", async () => {
 
     const updated = await db.getMonitorById(monitor.id);
     assert.equal(updated?.last_check_at, null);
+  });
+});
+
+test("runDueChecks logs and continues when one monitor in the batch fails to record", async () => {
+  await withSchedulerModules(async ({ db, scheduler }) => {
+    const survivor = await db.createMonitor({
+      name: "survivor-monitor",
+      type: "ping",
+      target: "127.0.0.2",
+      interval_seconds: 60,
+      timeout_seconds: 2,
+    });
+    const doomed = await db.createMonitor({
+      name: "doomed-monitor",
+      type: "ping",
+      target: "127.0.0.3",
+      interval_seconds: 60,
+      timeout_seconds: 2,
+    });
+
+    const originalConsoleError = console.error;
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    try {
+      const database = await db.getDb();
+      const runPromise = scheduler.runDueChecks();
+      // The ping check spawns a real child process, giving this a window to
+      // remove the row before recordMonitorCheck writes back to it.
+      await database.run("DELETE FROM monitors WHERE id = ?", [doomed.id]);
+      await assert.doesNotReject(runPromise);
+    } finally {
+      console.error = originalConsoleError;
+    }
+
+    assert.ok(
+      errors.some(
+        (call) =>
+          typeof call[0] === "string" &&
+          call[0].includes(`check failed for monitor ${doomed.id}`)
+      ),
+      "expected the per-monitor failure to be logged"
+    );
+
+    const updatedSurvivor = await db.getMonitorById(survivor.id);
+    assert.ok(updatedSurvivor?.last_check_at);
   });
 });
 
