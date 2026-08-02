@@ -1,5 +1,9 @@
+import { version as packageVersion } from "../package.json";
+
 const FALLBACK_VERSION =
-  process.env.NEXT_PUBLIC_APP_VERSION ?? process.env.APP_VERSION ?? "dev";
+  process.env.NEXT_PUBLIC_APP_VERSION ??
+  process.env.APP_VERSION ??
+  packageVersion;
 
 const FALLBACK_COMMIT =
   process.env.NEXT_PUBLIC_APP_COMMIT_SHA ??
