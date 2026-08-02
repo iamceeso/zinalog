@@ -1,18 +1,16 @@
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
-import http from "node:http";
-import net from "node:net";
 import { createRequire } from "node:module";
-import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import type * as DbModuleType from "../lib/db";
-import type * as SchedulerModuleType from "../lib/monitor-scheduler";
-import { buildStatusMessage } from "../lib/monitor-scheduler";
+import type {
+  Monitor,
+  MonitorCheckOutcome,
+  MonitorCheckResult,
+} from "../lib/db";
 
-type DbModule = typeof DbModuleType;
-type SchedulerModule = typeof SchedulerModuleType;
+type SchedulerModule = typeof import("../lib/monitor-scheduler");
 
+const cjsRequire = createRequire(__filename);
 const compiledDbPath = path.resolve(__dirname, "../lib/db.js");
 const compiledSchedulerPath = path.resolve(
   __dirname,
@@ -23,461 +21,588 @@ const compiledNotificationsPath = path.resolve(
   __dirname,
   "../lib/notifications.js"
 );
-const compiledSecretCryptoPath = path.resolve(
-  __dirname,
-  "../lib/secret-crypto.js"
-);
-const compiledEmailPath = path.resolve(__dirname, "../lib/email.js");
-
-const cjsRequire = createRequire(__filename);
-const TEST_ENCRYPTION_KEY = "b".repeat(64);
+const compiledDomainUtilsPath = path.resolve(__dirname, "../lib/domain-utils.js");
+const compiledWhoisPath = path.resolve(__dirname, "../lib/whois.js");
 
 const ALL_COMPILED_PATHS = [
   compiledDbPath,
   compiledSchedulerPath,
   compiledChecksPath,
   compiledNotificationsPath,
-  compiledSecretCryptoPath,
-  compiledEmailPath,
+  compiledDomainUtilsPath,
+  compiledWhoisPath,
 ];
 
-async function withSchedulerModules(
-  fn: (modules: { db: DbModule; scheduler: SchedulerModule }) => Promise<void>
-): Promise<void> {
-  const tempDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), "zinalog-scheduler-test-")
-  );
-  const databasePath = path.join(tempDir, "logs.db");
+function baseMonitor(overrides: Partial<Monitor> = {}): Monitor {
+  return {
+    id: 1,
+    name: "prod-api",
+    type: "http",
+    target: "https://example.com/",
+    port: null,
+    method: "GET",
+    headers: null,
+    basic_auth_user: null,
+    basic_auth_pass: null,
+    expected_status: "200-299",
+    interval_seconds: 60,
+    timeout_seconds: 10,
+    retries: 0,
+    follow_redirects: 1,
+    verify_ssl: 1,
+    is_active: 1,
+    notify_enabled: 1,
+    status: "pending",
+    consecutive_fails: 0,
+    last_check_at: null,
+    last_status_change_at: null,
+    ssl_expires_at: null,
+    ssl_issuer: null,
+    ssl_valid: null,
+    domain_expires_at: null,
+    domain_registrar: null,
+    domain_checked_at: null,
+    created_at: "2026-01-01 00:00:00",
+    updated_at: "2026-01-01 00:00:00",
+    ...overrides,
+  };
+}
 
-  process.env.NODE_ENV = "production";
-  process.env.DATABASE_PATH = databasePath;
-  process.env.ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
-  delete global.__dbPromise;
-  delete global.__monitorSchedulerStarted;
+function mockModule(modulePath: string, exports: Record<string, unknown>): void {
+  cjsRequire.cache[modulePath] = {
+    id: modulePath,
+    filename: modulePath,
+    loaded: true,
+    exports,
+  } as NodeModule;
+}
+
+function loadSchedulerWithMocks(options: {
+  due?: Monitor[];
+  checkResult?: MonitorCheckResult;
+  outcome?: MonitorCheckOutcome | ((monitor: Monitor) => MonitorCheckOutcome);
+  getDueMonitors?: () => Promise<Monitor[]>;
+  domainDue?: Monitor[];
+  getMonitorsDueForDomainRefresh?: () => Promise<Monitor[]>;
+  recordMonitorCheck?: (
+    monitor: Monitor,
+    result: MonitorCheckResult
+  ) => Promise<MonitorCheckOutcome>;
+  updateMonitorDomainInfo?: (
+    id: number,
+    info: { expires_at: string | null; registrar: string | null }
+  ) => Promise<void>;
+  runMonitorCheck?: (monitor: Monitor) => Promise<MonitorCheckResult>;
+  sendAllNotifications?: (log: unknown) => Promise<unknown>;
+  isIpAddress?: (value: string) => boolean;
+  getDomainInfo?: (
+    hostname: string
+  ) => Promise<{ expires_at: string | null; registrar: string | null } | null>;
+}): {
+  scheduler: SchedulerModule;
+  calls: {
+    checked: Monitor[];
+    recorded: Array<{ monitor: Monitor; result: MonitorCheckResult }>;
+    notifications: unknown[];
+    domainUpdates: Array<{
+      id: number;
+      info: { expires_at: string | null; registrar: string | null };
+    }>;
+    domainLookups: string[];
+  };
+} {
   for (const p of ALL_COMPILED_PATHS) delete cjsRequire.cache[p];
+  delete global.__monitorSchedulerStarted;
 
-  const db = cjsRequire(compiledDbPath) as DbModule;
+  const calls = {
+    checked: [] as Monitor[],
+    recorded: [] as Array<{ monitor: Monitor; result: MonitorCheckResult }>,
+    notifications: [] as unknown[],
+    domainUpdates: [] as Array<{
+      id: number;
+      info: { expires_at: string | null; registrar: string | null };
+    }>,
+    domainLookups: [] as string[],
+  };
+  const checkResult = options.checkResult ?? {
+    status: "up",
+    status_code: 200,
+    response_time_ms: 42,
+    error: null,
+  };
+  const defaultOutcome: MonitorCheckOutcome = options.outcome
+    ? typeof options.outcome === "function"
+      ? options.outcome(baseMonitor())
+      : options.outcome
+    : {
+        previousStatus: "pending",
+        newStatus: checkResult.status,
+        statusChanged: true,
+        check: checkResult,
+      };
+
+  mockModule(compiledDbPath, {
+    getDueMonitors:
+      options.getDueMonitors ??
+      (async () => {
+        return options.due ?? [];
+      }),
+    getMonitorsDueForDomainRefresh:
+      options.getMonitorsDueForDomainRefresh ??
+      (async () => {
+        return options.domainDue ?? [];
+      }),
+    updateMonitorDomainInfo:
+      options.updateMonitorDomainInfo ??
+      (async (
+        id: number,
+        info: { expires_at: string | null; registrar: string | null }
+      ) => {
+        calls.domainUpdates.push({ id, info });
+      }),
+    recordMonitorCheck:
+      options.recordMonitorCheck ??
+      (async (monitor: Monitor, result: MonitorCheckResult) => {
+        calls.recorded.push({ monitor, result });
+        return typeof options.outcome === "function"
+          ? options.outcome(monitor)
+          : defaultOutcome;
+      }),
+  });
+  mockModule(compiledChecksPath, {
+    runMonitorCheck:
+      options.runMonitorCheck ??
+      (async (monitor: Monitor) => {
+        calls.checked.push(monitor);
+        return checkResult;
+      }),
+  });
+  mockModule(compiledNotificationsPath, {
+    sendAllNotifications:
+      options.sendAllNotifications ??
+      (async (log: unknown) => {
+        calls.notifications.push(log);
+        return [];
+      }),
+  });
+  mockModule(compiledDomainUtilsPath, {
+    isIpAddress:
+      options.isIpAddress ??
+      ((value: string) =>
+        /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || value === "::1"),
+  });
+  mockModule(compiledWhoisPath, {
+    getDomainInfo:
+      options.getDomainInfo ??
+      (async (hostname: string) => {
+        calls.domainLookups.push(hostname);
+        return { expires_at: "2027-01-01T00:00:00.000Z", registrar: "Example" };
+      }),
+  });
+
   const scheduler = cjsRequire(compiledSchedulerPath) as SchedulerModule;
+  return { scheduler, calls };
+}
+
+test("buildStatusMessage formats down and up monitor alerts", () => {
+  const { scheduler } = loadSchedulerWithMocks({});
+
+  assert.deepEqual(
+    scheduler.buildStatusMessage(
+      baseMonitor({ name: "api" }),
+      "down",
+      "connection refused",
+      null
+    ),
+    { level: "error", message: 'Monitor "api" is DOWN - connection refused' }
+  );
+  assert.deepEqual(
+    scheduler.buildStatusMessage(baseMonitor({ name: "api" }), "down", null, null),
+    { level: "error", message: 'Monitor "api" is DOWN' }
+  );
+  assert.deepEqual(
+    scheduler.buildStatusMessage(baseMonitor({ name: "api" }), "up", null, 42),
+    { level: "info", message: 'Monitor "api" is back UP (42ms)' }
+  );
+  assert.deepEqual(
+    scheduler.buildStatusMessage(baseMonitor({ name: "api" }), "up", null, null),
+    { level: "info", message: 'Monitor "api" is back UP' }
+  );
+});
+
+test("runAndRecordMonitorCheck records a check and sends a status-change notification", async () => {
+  const checkResult: MonitorCheckResult = {
+    status: "down",
+    status_code: 503,
+    response_time_ms: 88,
+    error: "unavailable",
+  };
+  const { scheduler, calls } = loadSchedulerWithMocks({ checkResult });
+  const monitor = baseMonitor({ id: 7, name: "billing", target: "https://billing.test" });
+
+  const outcome = await scheduler.runAndRecordMonitorCheck(monitor);
+
+  assert.equal(outcome.newStatus, "down");
+  assert.deepEqual(calls.checked, [monitor]);
+  assert.deepEqual(calls.recorded, [{ monitor, result: checkResult }]);
+  assert.equal(calls.notifications.length, 1);
+  assert.deepEqual(calls.notifications[0], {
+    level: "error",
+    message: 'Monitor "billing" is DOWN - unavailable',
+    service: "monitor:billing",
+    stack: null,
+    metadata: JSON.stringify({
+      monitor_id: 7,
+      type: "http",
+      target: "https://billing.test",
+      status_code: 503,
+      response_time_ms: 88,
+    }),
+    created_at: (calls.notifications[0] as { created_at: string }).created_at,
+  });
+  assert.match((calls.notifications[0] as { created_at: string }).created_at, /^\d{4}-/);
+});
+
+test("runAndRecordMonitorCheck skips notification when the guard conditions are false", async () => {
+  const noChange = loadSchedulerWithMocks({
+    outcome: {
+      previousStatus: "up",
+      newStatus: "up",
+      statusChanged: false,
+      check: { status: "up" },
+    },
+  });
+  await noChange.scheduler.runAndRecordMonitorCheck(baseMonitor());
+  assert.equal(noChange.calls.notifications.length, 0);
+
+  const disabled = loadSchedulerWithMocks({
+    outcome: {
+      previousStatus: "up",
+      newStatus: "down",
+      statusChanged: true,
+      check: { status: "down" },
+    },
+  });
+  await disabled.scheduler.runAndRecordMonitorCheck(baseMonitor({ notify_enabled: 0 }));
+  assert.equal(disabled.calls.notifications.length, 0);
+
+  const pending = loadSchedulerWithMocks({
+    outcome: {
+      previousStatus: "up",
+      newStatus: "pending",
+      statusChanged: true,
+      check: { status: "down" },
+    },
+  });
+  await pending.scheduler.runAndRecordMonitorCheck(baseMonitor());
+  assert.equal(pending.calls.notifications.length, 0);
+});
+
+test("runAndRecordMonitorCheck logs rejected monitor notifications", async () => {
+  const notificationError = new Error("notification failed");
+  const errors: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
 
   try {
-    await fn({ db, scheduler });
-    // Let any fire-and-forget notification calls settle before closing the DB.
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    const { scheduler } = loadSchedulerWithMocks({
+      checkResult: { status: "down", error: "boom" },
+      sendAllNotifications: async () => {
+        throw notificationError;
+      },
+    });
+    await scheduler.runAndRecordMonitorCheck(baseMonitor());
+    await new Promise((resolve) => setTimeout(resolve, 0));
   } finally {
-    try {
-      const database = await db.getDb();
-      await database.close();
-    } catch {
-      /* already closed by the test itself */
-    }
-    delete process.env.NODE_ENV;
-    delete process.env.DATABASE_PATH;
-    delete process.env.ENCRYPTION_KEY;
-    delete global.__dbPromise;
-    delete global.__monitorSchedulerStarted;
-    for (const p of ALL_COMPILED_PATHS) delete cjsRequire.cache[p];
-    await fs.rm(tempDir, { recursive: true, force: true });
+    console.error = originalConsoleError;
   }
-}
 
-async function withHttpServer(
-  handler: http.RequestListener,
-  fn: (port: number) => Promise<void>
-): Promise<void> {
-  const server = http.createServer(handler);
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address();
-  const port = typeof address === "object" && address ? address.port : 0;
+  assert.deepEqual(errors, [["[monitor-alert]", notificationError]]);
+});
+
+test("runDueChecks returns when there are no due monitors", async () => {
+  const { scheduler, calls } = loadSchedulerWithMocks({ due: [] });
+
+  await scheduler.runDueChecks();
+
+  assert.equal(calls.checked.length, 0);
+});
+
+test("runDueChecks processes due monitors in batches and logs per-monitor failures", async () => {
+  const monitors = Array.from({ length: 12 }, (_, i) =>
+    baseMonitor({ id: i + 1, name: `monitor-${i + 1}` })
+  );
+  const failed = monitors[10];
+  const checkError = new Error("check exploded");
+  const errors: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
+
   try {
-    await fn(port);
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
-}
-
-async function findClosedPort(): Promise<number> {
-  const server = net.createServer();
-  const port = await new Promise<number>((resolve) => {
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      resolve(typeof address === "object" && address ? address.port : 0);
-    });
-  });
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-  return port;
-}
-
-//  buildStatusMessage
-
-test("buildStatusMessage formats a down message with and without an error detail", () => {
-  const withError = buildStatusMessage(
-    { name: "prod-api" } as DbModuleType.Monitor,
-    "down",
-    "connection refused",
-    null
-  );
-  assert.equal(withError.level, "error");
-  assert.match(withError.message, /is DOWN - connection refused/);
-
-  const withoutError = buildStatusMessage(
-    { name: "prod-api" } as DbModuleType.Monitor,
-    "down",
-    null,
-    null
-  );
-  assert.equal(withoutError.message, 'Monitor "prod-api" is DOWN');
-});
-
-test("buildStatusMessage formats an up message with and without a response time", () => {
-  const withTime = buildStatusMessage(
-    { name: "prod-api" } as DbModuleType.Monitor,
-    "up",
-    null,
-    42
-  );
-  assert.equal(withTime.level, "info");
-  assert.match(withTime.message, /is back UP \(42ms\)/);
-
-  const withoutTime = buildStatusMessage(
-    { name: "prod-api" } as DbModuleType.Monitor,
-    "up",
-    null,
-    null
-  );
-  assert.equal(withoutTime.message, 'Monitor "prod-api" is back UP');
-});
-
-//  runAndRecordMonitorCheck
-
-test("runAndRecordMonitorCheck records an up result and fires the notify path on first success", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    await withHttpServer(
-      (_req, res) => {
-        res.writeHead(200);
-        res.end();
+    const { scheduler, calls } = loadSchedulerWithMocks({
+      due: monitors,
+      runMonitorCheck: async (monitor) => {
+        callsPlaceholder.checked.push(monitor);
+        if (monitor === failed) throw checkError;
+        return { status: "up" };
       },
-      async (port) => {
-        const monitor = await db.createMonitor({
-          name: "up-monitor",
-          type: "http",
-          target: `http://127.0.0.1:${port}/`,
-          interval_seconds: 60,
-          timeout_seconds: 2,
-        });
-
-        const outcome = await scheduler.runAndRecordMonitorCheck(monitor);
-        assert.equal(outcome.previousStatus, "pending");
-        assert.equal(outcome.newStatus, "up");
-        assert.equal(outcome.statusChanged, true);
-
-        const updated = await db.getMonitorById(monitor.id);
-        assert.equal(updated?.status, "up");
-      }
-    );
-  });
-});
-
-test("runAndRecordMonitorCheck records a down result and fires the notify path", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const closedPort = await findClosedPort();
-    const monitor = await db.createMonitor({
-      name: "down-monitor",
-      type: "http",
-      target: `http://127.0.0.1:${closedPort}/`,
-      interval_seconds: 60,
-      timeout_seconds: 2,
-      retries: 0,
     });
-
-    const outcome = await scheduler.runAndRecordMonitorCheck(monitor);
-    assert.equal(outcome.newStatus, "down");
-    assert.equal(outcome.statusChanged, true);
-  });
-});
-
-test("runAndRecordMonitorCheck does not notify when the status hasn't changed", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const closedPort = await findClosedPort();
-    const monitor = await db.createMonitor({
-      name: "flapping-monitor",
-      type: "http",
-      target: `http://127.0.0.1:${closedPort}/`,
-      interval_seconds: 60,
-      timeout_seconds: 2,
-      retries: 2,
-    });
-
-    // First failure stays within the retry budget: status remains "pending".
-    const first = await scheduler.runAndRecordMonitorCheck(monitor);
-    assert.equal(first.newStatus, "pending");
-    assert.equal(first.statusChanged, false);
-  });
-});
-
-test("runAndRecordMonitorCheck skips notifications when notify_enabled is false", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const closedPort = await findClosedPort();
-    const monitor = await db.createMonitor({
-      name: "silent-monitor",
-      type: "http",
-      target: `http://127.0.0.1:${closedPort}/`,
-      interval_seconds: 60,
-      timeout_seconds: 2,
-      retries: 0,
-      notify_enabled: false,
-    });
-
-    const outcome = await scheduler.runAndRecordMonitorCheck(monitor);
-    assert.equal(outcome.newStatus, "down");
-    assert.equal(outcome.statusChanged, true);
-  });
-});
-
-test("runAndRecordMonitorCheck rejects when the monitor row no longer exists", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const monitor = await db.createMonitor({
-      name: "ghost-monitor",
-      type: "ping",
-      target: "127.0.0.1",
-      interval_seconds: 60,
-      timeout_seconds: 2,
-    });
-    const fakeMonitor = { ...monitor, id: monitor.id + 100000 };
-
-    await assert.rejects(scheduler.runAndRecordMonitorCheck(fakeMonitor));
-  });
-});
-
-//  runDueChecks
-
-test("runDueChecks does nothing when there are no due monitors", async () => {
-  await withSchedulerModules(async ({ scheduler }) => {
-    await assert.doesNotReject(scheduler.runDueChecks());
-  });
-});
-
-test("runDueChecks processes a single due monitor", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    await withHttpServer(
-      (_req, res) => {
-        res.writeHead(200);
-        res.end();
-      },
-      async (port) => {
-        const monitor = await db.createMonitor({
-          name: "due-monitor",
-          type: "http",
-          target: `http://127.0.0.1:${port}/`,
-          interval_seconds: 60,
-          timeout_seconds: 2,
-        });
-
-        await scheduler.runDueChecks();
-
-        const updated = await db.getMonitorById(monitor.id);
-        assert.equal(updated?.status, "up");
-        assert.ok(updated?.last_check_at);
-      }
-    );
-  });
-});
-
-test("runDueChecks processes more monitors than the concurrency batch size", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const monitors = await Promise.all(
-      Array.from({ length: 12 }, (_, i) =>
-        db.createMonitor({
-          name: `bulk-monitor-${i}`,
-          type: "ping",
-          target: `127.0.0.${i + 1}`,
-          interval_seconds: 60,
-          timeout_seconds: 2,
-        })
-      )
-    );
+    const callsPlaceholder = calls;
 
     await scheduler.runDueChecks();
 
-    for (const monitor of monitors) {
-      const updated = await db.getMonitorById(monitor.id);
-      assert.ok(updated?.last_check_at, `monitor ${monitor.name} should have been checked`);
-    }
-  });
+    assert.equal(calls.checked.length, 12);
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.ok(
+    errors.some(
+      (call) =>
+        call[0] === `[monitor-scheduler] check failed for monitor ${failed.id}` &&
+        call[1] === checkError
+    )
+  );
 });
 
-test("runDueChecks does not process paused (inactive) monitors", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const monitor = await db.createMonitor({
-      name: "paused-monitor",
-      type: "ping",
-      target: "127.0.0.1",
-      interval_seconds: 60,
-      timeout_seconds: 2,
-      is_active: false,
-    });
+test("extractHostname returns raw non-http targets, parsed http hostnames, and null for invalid URLs", () => {
+  const { scheduler } = loadSchedulerWithMocks({});
 
-    await scheduler.runDueChecks();
-
-    const updated = await db.getMonitorById(monitor.id);
-    assert.equal(updated?.last_check_at, null);
-  });
+  assert.equal(scheduler.extractHostname(baseMonitor({ type: "tcp", target: "db.local" })), "db.local");
+  assert.equal(
+    scheduler.extractHostname(
+      baseMonitor({ type: "http", target: "https://status.example.com/path" })
+    ),
+    "status.example.com"
+  );
+  assert.equal(
+    scheduler.extractHostname(baseMonitor({ type: "http", target: "not a url" })),
+    null
+  );
 });
 
-test("runDueChecks logs and continues when one monitor in the batch fails to record", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    // A handshake (not a timing race) guarantees the monitor row is deleted
-    // strictly before its in-flight check tries to write the result back,
-    // which reliably triggers the foreign-key failure in recordMonitorCheck.
-    let resolveRequestReceived!: () => void;
-    const requestReceived = new Promise<void>((resolve) => {
-      resolveRequestReceived = resolve;
-    });
-    let resolveRelease!: () => void;
-    const releaseGate = new Promise<void>((resolve) => {
-      resolveRelease = resolve;
-    });
+test("runDueDomainRefreshes returns when there are no due monitors", async () => {
+  const { scheduler, calls } = loadSchedulerWithMocks({ domainDue: [] });
 
-    const server = http.createServer((_req, res) => {
-      resolveRequestReceived();
-      void releaseGate.then(() => {
-        res.writeHead(200);
-        res.end();
-      });
-    });
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const address = server.address();
-    const port = typeof address === "object" && address ? address.port : 0;
+  await scheduler.runDueDomainRefreshes();
 
-    const survivor = await db.createMonitor({
-      name: "survivor-monitor",
-      type: "ping",
-      target: "127.0.0.2",
-      interval_seconds: 60,
-      timeout_seconds: 2,
-    });
-    const doomed = await db.createMonitor({
-      name: "doomed-monitor",
-      type: "http",
-      target: `http://127.0.0.1:${port}/`,
-      interval_seconds: 60,
-      timeout_seconds: 5,
-    });
-
-    const originalConsoleError = console.error;
-    const errors: unknown[][] = [];
-    console.error = (...args: unknown[]) => {
-      errors.push(args);
-    };
-
-    try {
-      const database = await db.getDb();
-      const runPromise = scheduler.runDueChecks();
-      await requestReceived;
-      await database.run("DELETE FROM monitors WHERE id = ?", [doomed.id]);
-      resolveRelease();
-      await assert.doesNotReject(runPromise);
-    } finally {
-      console.error = originalConsoleError;
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    }
-
-    assert.ok(
-      errors.some(
-        (call) =>
-          typeof call[0] === "string" &&
-          call[0].includes(`check failed for monitor ${doomed.id}`)
-      ),
-      "expected the per-monitor failure to be logged"
-    );
-
-    const updatedSurvivor = await db.getMonitorById(survivor.id);
-    assert.ok(updatedSurvivor?.last_check_at);
-  });
+  assert.equal(calls.domainUpdates.length, 0);
+  assert.equal(calls.domainLookups.length, 0);
 });
 
-//  ensureMonitorSchedulerStarted
+test("runDueDomainRefreshes stamps skipped hostnames without lookup", async () => {
+  const monitors = [
+    baseMonitor({ id: 1, type: "http", target: "not a url" }),
+    baseMonitor({ id: 2, type: "http", target: "https://127.0.0.1/health" }),
+    baseMonitor({ id: 3, type: "tcp", target: "::1" }),
+  ];
+  const { scheduler, calls } = loadSchedulerWithMocks({ domainDue: monitors });
 
-test("ensureMonitorSchedulerStarted arms the interval once and is a no-op on subsequent calls", async () => {
-  await withSchedulerModules(async ({ scheduler }) => {
-    const originalSetInterval = global.setInterval;
-    const originalClearInterval = global.clearInterval;
-    let setIntervalCalls = 0;
-    const fakeHandle = { unref: () => {} };
+  await scheduler.runDueDomainRefreshes();
 
-    (global as unknown as { setInterval: unknown }).setInterval = (
-      ...args: unknown[]
-    ) => {
-      setIntervalCalls += 1;
-      return fakeHandle as unknown as NodeJS.Timeout;
-    };
-
-    try {
-      scheduler.ensureMonitorSchedulerStarted();
-      scheduler.ensureMonitorSchedulerStarted();
-      assert.equal(setIntervalCalls, 1);
-    } finally {
-      global.setInterval = originalSetInterval;
-      global.clearInterval = originalClearInterval;
-    }
-
-    // Give the immediate tick() a chance to finish its (empty) DB query.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  });
+  assert.equal(calls.domainLookups.length, 0);
+  assert.deepEqual(calls.domainUpdates, [
+    { id: 1, info: { expires_at: null, registrar: null } },
+    { id: 2, info: { expires_at: null, registrar: null } },
+    { id: 3, info: { expires_at: null, registrar: null } },
+  ]);
 });
 
-test("ensureMonitorSchedulerStarted tolerates an interval handle without unref", async () => {
-  await withSchedulerModules(async ({ scheduler }) => {
-    const originalSetInterval = global.setInterval;
-    const fakeHandle = {};
-
-    (global as unknown as { setInterval: unknown }).setInterval = () =>
-      fakeHandle as unknown as NodeJS.Timeout;
-
-    try {
-      assert.doesNotThrow(() => scheduler.ensureMonitorSchedulerStarted());
-    } finally {
-      global.setInterval = originalSetInterval;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 20));
+test("runDueDomainRefreshes swallows skipped-hostname update failures", async () => {
+  const updateError = new Error("stamp failed");
+  const monitor = baseMonitor({ id: 7, type: "http", target: "not a url" });
+  const { scheduler } = loadSchedulerWithMocks({
+    domainDue: [monitor],
+    updateMonitorDomainInfo: async () => {
+      throw updateError;
+    },
   });
+
+  await assert.doesNotReject(scheduler.runDueDomainRefreshes());
 });
 
-test("the scheduler's tick logs and swallows a failure from runDueChecks itself", async () => {
-  await withSchedulerModules(async ({ db, scheduler }) => {
-    const originalConsoleError = console.error;
-    const originalSetInterval = global.setInterval;
-    const originalClearInterval = global.clearInterval;
-    const errors: unknown[][] = [];
-    console.error = (...args: unknown[]) => {
-      errors.push(args);
-    };
-    let capturedHandle: NodeJS.Timeout | undefined;
-    (global as unknown as { setInterval: unknown }).setInterval = (
-      ...args: Parameters<typeof originalSetInterval>
-    ) => {
-      capturedHandle = originalSetInterval(...args);
-      return capturedHandle;
-    };
-
-    try {
-      // Close the database out from under the scheduler so that the very
-      // first getDueMonitors() call inside tick()'s runDueChecks() rejects.
-      const database = await db.getDb();
-      await database.close();
-
-      assert.doesNotThrow(() => scheduler.ensureMonitorSchedulerStarted());
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    } finally {
-      if (capturedHandle) originalClearInterval(capturedHandle);
-      global.setInterval = originalSetInterval;
-      global.clearInterval = originalClearInterval;
-      console.error = originalConsoleError;
-    }
-
-    assert.ok(
-      errors.some((call) => call[0] === "[monitor-scheduler] tick failed"),
-      "expected the top-level tick failure to be logged"
-    );
+test("runDueDomainRefreshes records domain lookup results", async () => {
+  const monitor = baseMonitor({
+    id: 4,
+    type: "http",
+    target: "https://example.com/app",
   });
+  const { scheduler, calls } = loadSchedulerWithMocks({ domainDue: [monitor] });
+
+  await scheduler.runDueDomainRefreshes();
+
+  assert.deepEqual(calls.domainLookups, ["example.com"]);
+  assert.deepEqual(calls.domainUpdates, [
+    {
+      id: 4,
+      info: { expires_at: "2027-01-01T00:00:00.000Z", registrar: "Example" },
+    },
+  ]);
+});
+
+test("runDueDomainRefreshes stores nulls for empty lookup results", async () => {
+  const monitor = baseMonitor({
+    id: 5,
+    type: "http",
+    target: "https://empty.example/",
+  });
+  const { scheduler, calls } = loadSchedulerWithMocks({
+    domainDue: [monitor],
+    getDomainInfo: async (hostname) => {
+      callsPlaceholder.domainLookups.push(hostname);
+      return null;
+    },
+  });
+  const callsPlaceholder = calls;
+
+  await scheduler.runDueDomainRefreshes();
+
+  assert.deepEqual(calls.domainUpdates, [
+    { id: 5, info: { expires_at: null, registrar: null } },
+  ]);
+});
+
+test("runDueDomainRefreshes logs lookup failures and stamps nulls", async () => {
+  const lookupError = new Error("whois failed");
+  const updateError = new Error("update failed");
+  const monitor = baseMonitor({
+    id: 6,
+    type: "http",
+    target: "https://broken.example/",
+  });
+  const errors: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
+
+  try {
+    const { scheduler, calls } = loadSchedulerWithMocks({
+      domainDue: [monitor],
+      getDomainInfo: async (hostname) => {
+        callsPlaceholder.domainLookups.push(hostname);
+        throw lookupError;
+      },
+      updateMonitorDomainInfo: async () => {
+        throw updateError;
+      },
+    });
+    const callsPlaceholder = calls;
+
+    await scheduler.runDueDomainRefreshes();
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.deepEqual(errors, [
+    [
+      "[monitor-scheduler] domain refresh failed for monitor 6",
+      lookupError,
+    ],
+  ]);
+});
+
+test("ensureMonitorSchedulerStarted starts once, unreferences when possible, and runs an immediate tick", async () => {
+  const due = [baseMonitor()];
+  const { scheduler, calls } = loadSchedulerWithMocks({ due });
+  const originalSetInterval = global.setInterval;
+  let intervalCalls = 0;
+  let unrefCalls = 0;
+
+  (global as unknown as { setInterval: unknown }).setInterval = () => {
+    intervalCalls += 1;
+    return {
+      unref: () => {
+        unrefCalls += 1;
+      },
+    } as unknown as NodeJS.Timeout;
+  };
+
+  try {
+    scheduler.ensureMonitorSchedulerStarted();
+    scheduler.ensureMonitorSchedulerStarted();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    global.setInterval = originalSetInterval;
+  }
+
+  assert.equal(intervalCalls, 1);
+  assert.equal(unrefCalls, 1);
+  assert.equal(calls.checked.length, 1);
+});
+
+test("ensureMonitorSchedulerStarted tolerates interval handles without unref", async () => {
+  const { scheduler } = loadSchedulerWithMocks({});
+  const originalSetInterval = global.setInterval;
+
+  (global as unknown as { setInterval: unknown }).setInterval = () =>
+    ({}) as NodeJS.Timeout;
+
+  try {
+    assert.doesNotThrow(() => scheduler.ensureMonitorSchedulerStarted());
+  } finally {
+    global.setInterval = originalSetInterval;
+  }
+});
+
+test("the scheduler tick logs runDueChecks failures", async () => {
+  const tickError = new Error("due failed");
+  const { scheduler } = loadSchedulerWithMocks({
+    getDueMonitors: async () => {
+      throw tickError;
+    },
+  });
+  const originalSetInterval = global.setInterval;
+  const originalConsoleError = console.error;
+  const errors: unknown[][] = [];
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
+
+  (global as unknown as { setInterval: unknown }).setInterval = () =>
+    ({}) as NodeJS.Timeout;
+
+  try {
+    scheduler.ensureMonitorSchedulerStarted();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    global.setInterval = originalSetInterval;
+    console.error = originalConsoleError;
+  }
+
+  assert.deepEqual(errors, [["[monitor-scheduler] tick failed", tickError]]);
+});
+
+test("the scheduler tick logs runDueDomainRefreshes failures", async () => {
+  const tickError = new Error("domain due failed");
+  const { scheduler } = loadSchedulerWithMocks({
+    getMonitorsDueForDomainRefresh: async () => {
+      throw tickError;
+    },
+  });
+  const originalSetInterval = global.setInterval;
+  const originalConsoleError = console.error;
+  const errors: unknown[][] = [];
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
+
+  (global as unknown as { setInterval: unknown }).setInterval = () =>
+    ({}) as NodeJS.Timeout;
+
+  try {
+    scheduler.ensureMonitorSchedulerStarted();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    global.setInterval = originalSetInterval;
+    console.error = originalConsoleError;
+  }
+
+  assert.deepEqual(errors, [
+    ["[monitor-scheduler] domain refresh tick failed", tickError],
+  ]);
 });

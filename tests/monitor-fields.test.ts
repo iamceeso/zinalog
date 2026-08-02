@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   MASKED_SECRET,
   isMaskedSecret,
+  monitorUniqueConstraintField,
   sanitizeMonitorForClient,
 } from "../lib/monitor-fields";
 import type { Monitor } from "../lib/db";
@@ -33,6 +34,9 @@ function baseMonitor(overrides: Partial<Monitor> = {}): Monitor {
     ssl_expires_at: null,
     ssl_issuer: null,
     ssl_valid: null,
+    domain_expires_at: null,
+    domain_registrar: null,
+    domain_checked_at: null,
     created_at: "2026-01-01 00:00:00",
     updated_at: "2026-01-01 00:00:00",
     ...overrides,
@@ -81,4 +85,27 @@ test("sanitizeMonitorForClient preserves extra fields from subtypes", () => {
 
   const sanitized = sanitizeMonitorForClient(monitor);
   assert.equal(sanitized.last_response_time_ms, 42);
+});
+
+test("monitorUniqueConstraintField identifies monitor unique constraint fields", () => {
+  assert.equal(monitorUniqueConstraintField("not an error"), null);
+  assert.equal(monitorUniqueConstraintField(new Error("boom")), null);
+  assert.equal(
+    monitorUniqueConstraintField(
+      new Error("SQLITE_CONSTRAINT: UNIQUE constraint failed: monitors.name")
+    ),
+    "name"
+  );
+  assert.equal(
+    monitorUniqueConstraintField(
+      new Error("SQLITE_CONSTRAINT: UNIQUE constraint failed: monitors.target")
+    ),
+    "target"
+  );
+  assert.equal(
+    monitorUniqueConstraintField(
+      new Error("SQLITE_CONSTRAINT: UNIQUE constraint failed: monitors.owner_id")
+    ),
+    null
+  );
 });
