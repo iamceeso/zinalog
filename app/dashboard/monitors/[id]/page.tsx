@@ -472,6 +472,7 @@ export default function MonitorDetailPage() {
           onClose={() => setShowEdit(false)}
           onSaved={(updated) => {
             setMonitor(updated);
+            setShowEdit(false);
           }}
         />
       )}

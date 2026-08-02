@@ -380,7 +380,7 @@ export default function MonitorsPage() {
           onClose={() => setShowFormFor(null)}
           onSaved={(monitor) => {
             upsertMonitor(monitor);
-            setShowFormFor(monitor);
+            setShowFormFor(null);
           }}
         />
       )}

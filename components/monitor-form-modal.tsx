@@ -128,14 +128,12 @@ export default function MonitorFormModal({
   const [form, setForm] = useState<FormState>(() => initialState(monitor));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const submit = async () => {
     setError("");
-    setSaved(false);
 
     if (!form.name.trim()) {
       setError("Name is required");
@@ -205,7 +203,6 @@ export default function MonitorFormModal({
         return;
       }
       onSaved(data.monitor);
-      setSaved(true);
     } finally {
       setLoading(false);
     }
@@ -221,6 +218,12 @@ export default function MonitorFormModal({
       }
       footer={
         <>
+          <button
+            type="button"
+            className="bg-(--bg-card) border border-(--border) rounded-md py-2.25 px-4 text-[13px] text-(--text-muted) cursor-default opacity-70"
+          >
+            Cancel
+          </button>
           <button
             onClick={submit}
             disabled={loading}
@@ -442,12 +445,6 @@ export default function MonitorFormModal({
         {error && (
           <div className="px-3 py-2 bg-[rgba(248,81,73,0.1)] border border-[rgba(248,81,73,0.3)] rounded-md text-[12px] text-(--error)">
             {error}
-          </div>
-        )}
-
-        {saved && (
-          <div className="px-3 py-2 bg-[rgba(63,185,80,0.1)] border border-[rgba(63,185,80,0.3)] rounded-md text-[12px] text-(--success)">
-            Monitor saved
           </div>
         )}
       </div>
