@@ -90,6 +90,15 @@ export async function sendEmail(
 
 //  Alert email builder
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function buildAlertEmail(log: {
   level: string;
   message: string;
@@ -105,7 +114,8 @@ export function buildAlertEmail(log: {
     debug: "#79c0ff",
   };
   const color = levelColors[log.level] ?? "#8b949e";
-  const service = log.service ?? "unknown service";
+  const service = escapeHtml(log.service ?? "unknown service");
+  const message = escapeHtml(log.message);
 
   let metaHtml = "";
   if (log.metadata) {
@@ -115,7 +125,7 @@ export function buildAlertEmail(log: {
         <tr>
           <td style="padding:8px 0;color:#8b949e;font-size:12px;vertical-align:top;width:100px">Metadata</td>
           <td style="padding:8px 0;font-size:12px">
-            <pre style="margin:0;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;color:#8b949e;overflow:auto;font-family:monospace">${JSON.stringify(parsed, null, 2)}</pre>
+            <pre style="margin:0;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;color:#8b949e;overflow:auto;font-family:monospace">${escapeHtml(JSON.stringify(parsed, null, 2))}</pre>
           </td>
         </tr>`;
     } catch {
@@ -127,7 +137,7 @@ export function buildAlertEmail(log: {
     ? `<tr>
         <td style="padding:8px 0;color:#8b949e;font-size:12px;vertical-align:top;width:100px">Stack</td>
         <td style="padding:8px 0">
-          <pre style="margin:0;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;color:#f85149;overflow:auto;font-size:11px;font-family:monospace">${log.stack}</pre>
+          <pre style="margin:0;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;color:#f85149;overflow:auto;font-size:11px;font-family:monospace">${escapeHtml(log.stack)}</pre>
         </td>
       </tr>`
     : "";
@@ -165,7 +175,7 @@ export function buildAlertEmail(log: {
           <td style="background:#1c2128;border:1px solid #30363d;border-top:none;border-radius:0 0 12px 12px;padding:24px">
 
             <!-- Message -->
-            <p style="margin:0 0 20px;font-size:15px;font-weight:600;color:#e6edf3;line-height:1.5">${log.message}</p>
+            <p style="margin:0 0 20px;font-size:15px;font-weight:600;color:#e6edf3;line-height:1.5">${message}</p>
 
             <!-- Details table -->
             <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #30363d;margin-top:4px">

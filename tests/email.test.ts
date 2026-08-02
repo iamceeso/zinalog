@@ -21,8 +21,26 @@ test("buildAlertEmail includes service, stack, and parsed metadata", () => {
   assert.match(subject, /…$/);
   assert.match(html, /unknown service/);
   assert.match(html, /Error: boom/);
-  assert.match(html, /"requestId": "req_123"/);
+  assert.match(html, /&quot;requestId&quot;: &quot;req_123&quot;/);
   assert.match(html, /2026-03-16T11:00:00.000Z UTC/);
+});
+
+test("buildAlertEmail escapes HTML in attacker-controlled log fields", () => {
+  const { html } = buildAlertEmail({
+    level: "error",
+    message: "<img src=x onerror=alert(1)>",
+    service: "<script>alert('svc')</script>",
+    stack: "</pre><script>alert('stack')</script>",
+    metadata: JSON.stringify({ note: "</pre><script>alert('meta')</script>" }),
+    created_at: "2026-03-16T11:00:00.000Z",
+  });
+
+  assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
+  assert.doesNotMatch(html, /<script>alert\('svc'\)<\/script>/);
+  assert.doesNotMatch(html, /<script>alert\('stack'\)<\/script>/);
+  assert.doesNotMatch(html, /<script>alert\('meta'\)<\/script>/);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(html, /&lt;script&gt;alert\(&#39;svc&#39;\)&lt;\/script&gt;/);
 });
 
 test("buildAlertEmail skips metadata blocks when metadata is not valid JSON", () => {
