@@ -7,14 +7,17 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
+import type tls from "node:tls";
 import {
   buildSslInfo,
   checkHttp,
   checkPing,
   checkTcp,
   describeFetchError,
+  getSslInfo,
   runMonitorCheck,
   type TcpSocketLike,
+  type TlsSocketLike,
 } from "../lib/monitor-checks";
 import type { Monitor, MonitorType } from "../lib/db";
 
@@ -208,6 +211,15 @@ test("buildSslInfo takes the first entry when an issuer field is an array of val
     true
   );
   assert.equal(arrayIssuer?.issuer, "First Org");
+
+  const emptyArrayIssuer = buildSslInfo(
+    {
+      valid_to: "Jan 1 00:00:00 2030 GMT",
+      issuer: { O: [] },
+    } as unknown as Parameters<typeof buildSslInfo>[0],
+    true
+  );
+  assert.equal(emptyArrayIssuer?.issuer, null);
 });
 
 //  checkHttp
@@ -244,6 +256,47 @@ test("checkHttp reports down when the response status is outside the expected ra
       assert.match(result.error ?? "", /Unexpected status code 500/);
     }
   );
+});
+
+test("checkHttp matches a single expected status code with no range dash", async () => {
+  await withHttpServer(
+    (_req, res) => {
+      res.writeHead(404);
+      res.end();
+    },
+    async (port) => {
+      const result = await checkHttp(
+        baseMonitor({
+          target: `http://127.0.0.1:${port}/`,
+          expected_status: "404",
+        })
+      );
+      assert.equal(result.status, "up");
+    }
+  );
+});
+
+test("checkHttp defaults the method to GET when the monitor has none set", async () => {
+  await withHttpServer(
+    (req, res) => {
+      res.writeHead(200, { "x-method": req.method ?? "" });
+      res.end();
+    },
+    async (port) => {
+      const result = await checkHttp(
+        baseMonitor({ target: `http://127.0.0.1:${port}/`, method: null })
+      );
+      assert.equal(result.status, "up");
+    }
+  );
+});
+
+test("checkHttp defaults the SSL probe port to 443 when the target URL has none", async () => {
+  const result = await checkHttp(
+    baseMonitor({ target: "https://127.0.0.1/", timeout_seconds: 1 })
+  );
+  assert.equal(result.status, "down");
+  assert.equal(result.ssl, null);
 });
 
 test("checkHttp falls back to the default 200-299 range when expected_status has no usable ranges", async () => {
@@ -499,6 +552,33 @@ test("checkHttp reports null SSL info when the TLS probe times out", async () =>
   });
 });
 
+test("getSslInfo ignores a late duplicate event once it has already settled", async () => {
+  const fakeSocket: TlsSocketLike = {
+    once(event, listener) {
+      if (event === "secureConnect") {
+        // Fire twice to exercise the already-settled guard.
+        setImmediate(() => listener());
+        setImmediate(() => listener());
+      }
+      return this;
+    },
+    getPeerCertificate() {
+      return {
+        valid_to: "Jan 1 00:00:00 2030 GMT",
+        issuer: { O: "Acme Corp" },
+      } as tls.PeerCertificate;
+    },
+    authorized: true,
+    destroy() {
+      return this;
+    },
+  };
+
+  const result = await getSslInfo("example.com", 443, 1000, true, () => fakeSocket);
+  assert.ok(result);
+  assert.equal(result?.issuer, "Acme Corp");
+});
+
 //  checkTcp
 
 test("checkTcp reports up for a reachable port", async () => {
@@ -523,13 +603,22 @@ test("checkTcp reports down with the connection error for a closed port", async 
   assert.ok(result.error);
 });
 
-test("checkTcp reports down on timeout using an injected socket", async () => {
+test("checkTcp defaults to port 0 when the monitor has no port set", async () => {
+  const result = await checkTcp(
+    baseMonitor({ type: "tcp", target: "127.0.0.1", port: null, timeout_seconds: 1 })
+  );
+  assert.equal(result.status, "down");
+});
+
+test("checkTcp reports down on timeout using an injected socket, ignoring any late duplicate event", async () => {
   const fakeSocket: TcpSocketLike = {
     setTimeout() {
       return this;
     },
     once(event, listener) {
       if (event === "timeout") {
+        // Fire twice to exercise the already-settled guard too.
+        setImmediate(() => (listener as () => void)());
         setImmediate(() => (listener as () => void)());
       }
       return this;

@@ -15,7 +15,7 @@ declare global {
 const TICK_MS = 10_000;
 const MAX_CONCURRENT_CHECKS = 10;
 
-function buildStatusMessage(
+export function buildStatusMessage(
   monitor: Monitor,
   newStatus: MonitorStatus,
   error: string | null | undefined,
@@ -73,7 +73,7 @@ export async function runAndRecordMonitorCheck(
   return outcome;
 }
 
-async function runDueChecks(): Promise<void> {
+export async function runDueChecks(): Promise<void> {
   const due = await getDueMonitors();
   if (due.length === 0) return;
 

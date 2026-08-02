@@ -191,7 +191,7 @@ export default function MonitorFormModal({
     <DialogShell
       title={isEdit ? "Edit Monitor" : "New Monitor"}
       onClose={onClose}
-      widthClassName="w-full max-w-[640px]"
+      widthClassName={form.type === "http" ? "w-full max-w-[860px]" : "w-full max-w-[560px]"}
       footer={
         <>
           <button
@@ -210,142 +210,148 @@ export default function MonitorFormModal({
         </>
       }
     >
-      <div className="flex flex-col gap-3.5 max-h-[65vh] overflow-y-auto pr-1">
-        <div>
-          <label className={labelCls}>Name *</label>
-          <input
-            type="text"
-            placeholder="e.g. Production API"
-            value={form.name}
-            onChange={(e) => update("name", e.target.value)}
-            className={inputCls}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3.5">
-          <div>
-            <label className={labelCls}>Type</label>
-            <select
-              value={form.type}
-              onChange={(e) => update("type", e.target.value as MonitorType)}
-              className={inputCls}
-            >
-              <option value="http">HTTP/HTTPS</option>
-              <option value="tcp">TCP Port</option>
-              <option value="ping">Ping</option>
-            </select>
-          </div>
-
-          {form.type === "tcp" && (
+      <div className="flex flex-col gap-3.5 max-h-[85vh] overflow-y-auto pr-1">
+        <div className={form.type === "http" ? "grid grid-cols-2 gap-x-6 gap-y-3.5" : "flex flex-col gap-3.5"}>
+          <div className="flex flex-col gap-3.5">
             <div>
-              <label className={labelCls}>Port *</label>
-              <input
-                type="number"
-                min={1}
-                max={65535}
-                value={form.port}
-                onChange={(e) => update("port", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-          )}
-
-          {form.type === "http" && (
-            <div>
-              <label className={labelCls}>Method</label>
-              <select
-                value={form.method}
-                onChange={(e) => update("method", e.target.value)}
-                className={inputCls}
-              >
-                {HTTP_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        <div>
-          <label className={labelCls}>Target *</label>
-          <input
-            type="text"
-            placeholder={targetPlaceholder(form.type)}
-            value={form.target}
-            onChange={(e) => update("target", e.target.value)}
-            className={inputCls}
-          />
-        </div>
-
-        {form.type === "http" && (
-          <>
-            <div className={sectionCls}>HTTP Options</div>
-
-            <div>
-              <label className={labelCls}>Expected Status Codes</label>
+              <label className={labelCls}>Name *</label>
               <input
                 type="text"
-                placeholder="200-299"
-                value={form.expectedStatus}
-                onChange={(e) => update("expectedStatus", e.target.value)}
+                placeholder="e.g. Production API"
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
                 className={inputCls}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3.5">
               <div>
-                <label className={labelCls}>Basic Auth Username</label>
-                <input
-                  type="text"
-                  value={form.basicAuthUser}
-                  onChange={(e) => update("basicAuthUser", e.target.value)}
+                <label className={labelCls}>Type</label>
+                <select
+                  value={form.type}
+                  onChange={(e) => update("type", e.target.value as MonitorType)}
                   className={inputCls}
-                />
+                >
+                  <option value="http">HTTP/HTTPS</option>
+                  <option value="tcp">TCP Port</option>
+                  <option value="ping">Ping</option>
+                </select>
               </div>
-              <div>
-                <label className={labelCls}>Basic Auth Password</label>
-                <input
-                  type="password"
-                  value={form.basicAuthPass}
-                  onChange={(e) => update("basicAuthPass", e.target.value)}
-                  className={inputCls}
-                />
-              </div>
+
+              {form.type === "tcp" && (
+                <div>
+                  <label className={labelCls}>Port *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={65535}
+                    value={form.port}
+                    onChange={(e) => update("port", e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+              )}
+
+              {form.type === "http" && (
+                <div>
+                  <label className={labelCls}>Method</label>
+                  <select
+                    value={form.method}
+                    onChange={(e) => update("method", e.target.value)}
+                    className={inputCls}
+                  >
+                    {HTTP_METHODS.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div>
-              <label className={labelCls}>Custom Headers (JSON)</label>
-              <textarea
-                placeholder='{"X-Api-Key": "secret"}'
-                value={form.headers}
-                onChange={(e) => update("headers", e.target.value)}
-                rows={3}
-                className={`${inputCls} font-mono resize-y`}
+              <label className={labelCls}>Target *</label>
+              <input
+                type="text"
+                placeholder={targetPlaceholder(form.type)}
+                value={form.target}
+                onChange={(e) => update("target", e.target.value)}
+                className={inputCls}
               />
             </div>
 
-            <div className="flex gap-5">
-              <label className={checkboxRowCls}>
+            {form.type === "http" && (
+              <div>
+                <label className={labelCls}>Expected Status Codes</label>
                 <input
-                  type="checkbox"
-                  checked={form.followRedirects}
-                  onChange={(e) => update("followRedirects", e.target.checked)}
+                  type="text"
+                  placeholder="200-299"
+                  value={form.expectedStatus}
+                  onChange={(e) => update("expectedStatus", e.target.value)}
+                  className={inputCls}
                 />
-                Follow redirects
-              </label>
-              <label className={checkboxRowCls}>
-                <input
-                  type="checkbox"
-                  checked={form.verifySsl}
-                  onChange={(e) => update("verifySsl", e.target.checked)}
+              </div>
+            )}
+          </div>
+
+          {form.type === "http" && (
+            <div className="flex flex-col gap-3.5">
+              <div className={`${sectionCls} mt-0`}>Auth & Headers</div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className={labelCls}>Basic Auth Username</label>
+                  <input
+                    type="text"
+                    value={form.basicAuthUser}
+                    onChange={(e) => update("basicAuthUser", e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Basic Auth Password</label>
+                  <input
+                    type="password"
+                    value={form.basicAuthPass}
+                    onChange={(e) => update("basicAuthPass", e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className={labelCls}>Custom Headers (JSON)</label>
+                <textarea
+                  placeholder='{"X-Api-Key": "secret"}'
+                  value={form.headers}
+                  onChange={(e) => update("headers", e.target.value)}
+                  rows={3}
+                  className={`${inputCls} font-mono resize-y flex-1`}
                 />
-                Verify SSL certificate
-              </label>
+              </div>
+
+              <div className="flex gap-5">
+                <label className={checkboxRowCls}>
+                  <input
+                    type="checkbox"
+                    checked={form.followRedirects}
+                    onChange={(e) => update("followRedirects", e.target.checked)}
+                  />
+                  Follow redirects
+                </label>
+                <label className={checkboxRowCls}>
+                  <input
+                    type="checkbox"
+                    checked={form.verifySsl}
+                    onChange={(e) => update("verifySsl", e.target.checked)}
+                  />
+                  Verify SSL certificate
+                </label>
+              </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
 
         <div className={sectionCls}>Check Settings</div>
 

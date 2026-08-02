@@ -1,9 +1,9 @@
 -- migrate:up
 CREATE TABLE IF NOT EXISTS monitors (
   id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-  name                   TEXT NOT NULL,
+  name                   TEXT NOT NULL UNIQUE,
   type                   TEXT NOT NULL,
-  target                 TEXT NOT NULL,
+  target                 TEXT NOT NULL UNIQUE,
   port                   INTEGER,
   method                 TEXT DEFAULT 'GET',
   headers                TEXT,

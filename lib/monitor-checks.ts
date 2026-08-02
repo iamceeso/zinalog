@@ -58,22 +58,31 @@ export function buildSslInfo(
   };
 }
 
-function getSslInfo(
+export interface TlsSocketLike {
+  once(event: "secureConnect" | "timeout" | "error", listener: () => void): unknown;
+  getPeerCertificate(): tls.PeerCertificate;
+  authorized: boolean;
+  destroy(): unknown;
+}
+
+export function getSslInfo(
   hostname: string,
   port: number,
   timeoutMs: number,
-  rejectUnauthorized: boolean
-): Promise<SslInfo | null> {
-  return new Promise((resolve) => {
-    let settled = false;
-
-    const socket = tls.connect({
+  rejectUnauthorized: boolean,
+  connect: () => TlsSocketLike = () =>
+    tls.connect({
       host: hostname,
       port,
       servername: hostname,
       rejectUnauthorized,
       timeout: timeoutMs,
-    });
+    })
+): Promise<SslInfo | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const socket = connect();
 
     const finish = (value: SslInfo | null) => {
       if (settled) return;
@@ -136,7 +145,8 @@ export async function checkHttp(monitor: Monitor): Promise<MonitorCheckResult> {
       response_time_ms: responseTime,
       error: isExpected ? null : `Unexpected status code ${res.status}`,
     };
-    await res.body?.cancel().catch(() => {});
+    // Body hasn't been read, so this always resolves cleanly.
+    await res.body?.cancel();
   } catch (err) {
     result = {
       status: "down",
@@ -144,7 +154,8 @@ export async function checkHttp(monitor: Monitor): Promise<MonitorCheckResult> {
       error: describeFetchError(err, monitor.timeout_seconds),
     };
   } finally {
-    await agent.close().catch(() => {});
+    // Each call gets its own fresh Agent, so this is always its first close.
+    await agent.close();
   }
 
   if (url.protocol === "https:") {
