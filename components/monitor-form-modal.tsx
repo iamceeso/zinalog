@@ -220,7 +220,8 @@ export default function MonitorFormModal({
         <>
           <button
             type="button"
-            className="bg-(--bg-card) border border-(--border) rounded-md py-2.25 px-4 text-[13px] text-(--text-muted) cursor-default opacity-70"
+            onClick={onClose}
+            className="bg-(--bg-card) border border-(--border) rounded-md py-2.25 px-4 text-[13px] text-(--text-muted) cursor-pointer"
           >
             Cancel
           </button>
