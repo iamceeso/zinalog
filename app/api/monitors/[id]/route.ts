@@ -6,6 +6,7 @@ import {
   listMonitorChecks,
   updateMonitor,
 } from "@/lib/db";
+import { ensureMonitorSchedulerStarted } from "@/lib/monitor-scheduler";
 import {
   monitorUniqueConstraintField,
   sanitizeMonitorForClient,
@@ -24,6 +25,8 @@ export async function GET(
 ) {
   const auth = await requireApiUser("viewer");
   if (!auth.ok) return auth.response;
+
+  ensureMonitorSchedulerStarted();
 
   const { id } = await params;
   const monitorId = parseId(id);
@@ -54,6 +57,8 @@ export async function PATCH(
 ) {
   const auth = await requireApiUser("operator");
   if (!auth.ok) return auth.response;
+
+  ensureMonitorSchedulerStarted();
 
   const { id } = await params;
   const monitorId = parseId(id);

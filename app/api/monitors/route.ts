@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMonitor, listMonitors } from "@/lib/db";
+import { ensureMonitorSchedulerStarted } from "@/lib/monitor-scheduler";
 import {
   monitorUniqueConstraintField,
   sanitizeMonitorForClient,
@@ -11,6 +12,8 @@ export async function GET() {
   const auth = await requireApiUser("viewer");
   if (!auth.ok) return auth.response;
 
+  ensureMonitorSchedulerStarted();
+
   const monitors = await listMonitors();
   return NextResponse.json({
     monitors: monitors.map(sanitizeMonitorForClient),
@@ -20,6 +23,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const auth = await requireApiUser("operator");
   if (!auth.ok) return auth.response;
+
+  ensureMonitorSchedulerStarted();
 
   let body: Record<string, unknown>;
   try {
