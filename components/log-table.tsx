@@ -369,7 +369,7 @@ function LogDetailPanel({ log, onClose }: { log: Log; onClose: () => void }) {
               Service
             </div>
             <div className="text-[13px] text-(--accent)">
-              {log.service ?? "—"}
+              {log.service ?? "-"}
             </div>
           </div>
           <div>
@@ -606,7 +606,7 @@ export default function LogTable({
                     <LevelBadge level={log.level} size="sm" />
                   </td>
                   <td className="hide-mobile px-3.5 py-2.25 text-[12px] text-(--accent) whitespace-nowrap max-w-30 overflow-hidden text-ellipsis">
-                    {log.service ?? "—"}
+                    {log.service ?? "-"}
                   </td>
                   <td className="px-3.5 py-2.25 text-[13px] text-foreground max-w-125 overflow-hidden text-ellipsis whitespace-nowrap">
                     {log.message}

@@ -13,6 +13,7 @@ import {
   Globe,
   Network,
   Copy,
+  X,
 } from "lucide-react";
 import ConfirmModal from "@/components/confirm-modal";
 import MonitorFormModal from "@/components/monitor-form-modal";
@@ -88,6 +89,7 @@ export default function MonitorsPage() {
   );
   const [runningId, setRunningId] = useState<number | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{
     title: string;
     message: string;
@@ -176,12 +178,20 @@ export default function MonitorsPage() {
 
   const handleDuplicate = async (monitor: ClientMonitor) => {
     setDuplicatingId(monitor.id);
+    setActionError(null);
     try {
       const res = await fetch(`/api/monitors/${monitor.id}/duplicate`, {
         method: "POST",
       });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setActionError(
+          data?.details?.join("; ") ??
+            data?.error ??
+            "Failed to duplicate monitor"
+        );
+        return;
+      }
       if (data.monitor) {
         handleSaved(data.monitor);
         setShowFormFor(data.monitor);
@@ -208,6 +218,18 @@ export default function MonitorsPage() {
           New Monitor
         </button>
       </div>
+
+      {actionError && (
+        <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-[rgba(248,81,73,0.1)] border border-[rgba(248,81,73,0.3)] rounded-md text-[12px] text-(--error)">
+          {actionError}
+          <button
+            onClick={() => setActionError(null)}
+            className="bg-transparent border-none text-(--error) cursor-pointer flex items-center shrink-0"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
         <div className="bg-(--bg-card) border border-(--border) rounded-[10px] overflow-hidden">
@@ -281,7 +303,7 @@ export default function MonitorsPage() {
                       <td className="px-3.5 py-3 text-[12px] text-(--text-muted) [font-variant-numeric:tabular-nums]">
                         {monitor.last_response_time_ms != null
                           ? `${monitor.last_response_time_ms}ms`
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="px-3.5 py-3 text-[11px] text-(--text-dim) font-mono whitespace-nowrap">
                         {formatDateTime(monitor.last_check_at)}

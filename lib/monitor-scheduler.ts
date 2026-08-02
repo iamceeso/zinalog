@@ -24,7 +24,7 @@ export function buildStatusMessage(
   if (newStatus === "down") {
     return {
       level: "error",
-      message: `Monitor "${monitor.name}" is DOWN${error ? ` — ${error}` : ""}`,
+      message: `Monitor "${monitor.name}" is DOWN${error ? ` - ${error}` : ""}`,
     };
   }
 

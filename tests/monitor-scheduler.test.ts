@@ -117,7 +117,7 @@ test("buildStatusMessage formats a down message with and without an error detail
     null
   );
   assert.equal(withError.level, "error");
-  assert.match(withError.message, /is DOWN — connection refused/);
+  assert.match(withError.message, /is DOWN - connection refused/);
 
   const withoutError = buildStatusMessage(
     { name: "prod-api" } as DbModuleType.Monitor,

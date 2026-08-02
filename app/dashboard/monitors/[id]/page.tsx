@@ -215,17 +215,17 @@ export default function MonitorDetailPage() {
         />
         <StatCard
           title="Uptime (24h)"
-          value={stats?.uptimePercent != null ? `${stats.uptimePercent}%` : "—"}
+          value={stats?.uptimePercent != null ? `${stats.uptimePercent}%` : "-"}
           accent="info"
         />
         <StatCard
           title="Avg Response (24h)"
-          value={stats?.avgResponseMs != null ? `${stats.avgResponseMs}ms` : "—"}
+          value={stats?.avgResponseMs != null ? `${stats.avgResponseMs}ms` : "-"}
         />
         {monitor.type === "http" && monitor.target.startsWith("https:") ? (
           <StatCard
             title="SSL Expiry"
-            value={sslDays != null ? `${sslDays}d` : "—"}
+            value={sslDays != null ? `${sslDays}d` : "-"}
             subtitle={monitor.ssl_issuer ?? undefined}
             icon={
               monitor.ssl_valid === 0 ? (
@@ -295,10 +295,10 @@ export default function MonitorDetailPage() {
                     </span>
                   </td>
                   <td className="px-3.5 py-2.5 text-[12px] text-(--text-muted) font-mono">
-                    {check.status_code ?? "—"}
+                    {check.status_code ?? "-"}
                   </td>
                   <td className="px-3.5 py-2.5 text-[12px] text-(--text-muted) [font-variant-numeric:tabular-nums]">
-                    {check.response_time_ms != null ? `${check.response_time_ms}ms` : "—"}
+                    {check.response_time_ms != null ? `${check.response_time_ms}ms` : "-"}
                   </td>
                   <td className="px-3.5 py-2.5 text-[12px] text-(--error) max-w-70 truncate">
                     {check.error ?? ""}
