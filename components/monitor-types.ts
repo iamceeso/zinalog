@@ -41,4 +41,9 @@ export interface ClientMonitorCheck {
   checked_at: string;
 }
 
+export interface RecentMonitorCheck extends ClientMonitorCheck {
+  monitor_name: string;
+  monitor_type: MonitorType;
+}
+
 export const MASKED_SECRET = "********************";

@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 import ConfirmModal from "@/components/confirm-modal";
 import MonitorFormModal from "@/components/monitor-form-modal";
-import type { ClientMonitor, MonitorStatus, MonitorType } from "@/components/monitor-types";
+import LivePingsCard from "@/components/live-pings-card";
+import type {
+  ClientMonitor,
+  MonitorStatus,
+  MonitorType,
+} from "@/components/monitor-types";
 
 function formatDateTime(dt: string | null): string {
   if (!dt) return "Never";
@@ -185,124 +190,134 @@ export default function MonitorsPage() {
         </button>
       </div>
 
-      <div className="bg-(--bg-card) border border-(--border) rounded-[10px] overflow-hidden">
-        {loading ? (
-          <div className="p-10 text-center text-(--text-dim) text-[14px]">
-            Loading…
-          </div>
-        ) : monitors.length === 0 ? (
-          <div className="p-15 text-center text-(--text-dim)">
-            <Globe size={32} className="mx-auto mb-3 opacity-30 block" />
-            <div className="text-[14px]">No monitors yet</div>
-            <div className="text-[12px] mt-1">
-              Add one to start tracking uptime
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
+        <div className="bg-(--bg-card) border border-(--border) rounded-[10px] overflow-hidden">
+          {loading ? (
+            <div className="p-10 text-center text-(--text-dim) text-[14px]">
+              Loading…
             </div>
-          </div>
-        ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-(--bg-surface) border-b border-(--border)">
-                {[
-                  "Status",
-                  "Name",
-                  "Type",
-                  "Target",
-                  "Interval",
-                  "Response",
-                  "Last Check",
-                  "Actions",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px] whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {monitors.map((monitor, i) => {
-                const Icon = TYPE_ICON[monitor.type];
-                return (
-                  <tr
-                    key={monitor.id}
-                    className={`${i < monitors.length - 1 ? "border-b border-(--border)" : ""} ${monitor.is_active ? "opacity-100" : "opacity-50"}`}
-                  >
-                    <td className="px-3.5 py-3">
-                      <StatusPill status={monitor.status} />
-                    </td>
-                    <td className="px-3.5 py-3 text-[13px] font-semibold text-foreground">
-                      <Link
-                        href={`/dashboard/monitors/${monitor.id}`}
-                        className="no-underline text-foreground hover:text-(--accent)"
-                      >
-                        {monitor.name}
-                      </Link>
-                    </td>
-                    <td className="px-3.5 py-3">
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-(--text-muted)">
-                        <Icon size={13} />
-                        {TYPE_LABEL[monitor.type]}
-                      </span>
-                    </td>
-                    <td className="px-3.5 py-3 text-[12px] text-(--text-muted) max-w-55 truncate">
-                      {monitor.target}
-                      {monitor.port ? `:${monitor.port}` : ""}
-                    </td>
-                    <td className="px-3.5 py-3 text-[12px] text-(--text-muted) whitespace-nowrap">
-                      {monitor.interval_seconds}s
-                    </td>
-                    <td className="px-3.5 py-3 text-[12px] text-(--text-muted) [font-variant-numeric:tabular-nums]">
-                      {monitor.last_response_time_ms != null
-                        ? `${monitor.last_response_time_ms}ms`
-                        : "—"}
-                    </td>
-                    <td className="px-3.5 py-3 text-[11px] text-(--text-dim) font-mono whitespace-nowrap">
-                      {formatDateTime(monitor.last_check_at)}
-                    </td>
-                    <td className="px-3.5 py-3">
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => handleRunNow(monitor)}
-                          disabled={runningId === monitor.id}
-                          title="Run check now"
-                          className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
+          ) : monitors.length === 0 ? (
+            <div className="p-15 text-center text-(--text-dim)">
+              <Globe size={32} className="mx-auto mb-3 opacity-30 block" />
+              <div className="text-[14px]">No monitors yet</div>
+              <div className="text-[12px] mt-1">
+                Add one to start tracking uptime
+              </div>
+            </div>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-(--bg-surface) border-b border-(--border)">
+                  {[
+                    "Status",
+                    "Name",
+                    "Type",
+                    "Target",
+                    "Interval",
+                    "Response",
+                    "Last Check",
+                    "Actions",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px] whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monitors.map((monitor, i) => {
+                  const Icon = TYPE_ICON[monitor.type];
+                  return (
+                    <tr
+                      key={monitor.id}
+                      className={`${i < monitors.length - 1 ? "border-b border-(--border)" : ""} ${monitor.is_active ? "opacity-100" : "opacity-50"}`}
+                    >
+                      <td className="px-3.5 py-3">
+                        <StatusPill status={monitor.status} />
+                      </td>
+                      <td className="px-3.5 py-3 text-[13px] font-semibold text-foreground">
+                        <Link
+                          href={`/dashboard/monitors/${monitor.id}`}
+                          className="no-underline text-foreground hover:text-(--accent)"
                         >
-                          <RefreshCw
-                            size={13}
-                            className={runningId === monitor.id ? "animate-spin" : ""}
-                          />
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(monitor)}
-                          title={monitor.is_active ? "Pause" : "Resume"}
-                          className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
-                        >
-                          {monitor.is_active ? <Pause size={13} /> : <Play size={13} />}
-                        </button>
-                        <button
-                          onClick={() => setShowFormFor(monitor)}
-                          title="Edit"
-                          className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(monitor)}
-                          title="Delete"
-                          className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--error) cursor-pointer flex items-center"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+                          {monitor.name}
+                        </Link>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <span className="inline-flex items-center gap-1.5 text-[12px] text-(--text-muted)">
+                          <Icon size={13} />
+                          {TYPE_LABEL[monitor.type]}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3 text-[12px] text-(--text-muted) max-w-55 truncate">
+                        {monitor.target}
+                        {monitor.port ? `:${monitor.port}` : ""}
+                      </td>
+                      <td className="px-3.5 py-3 text-[12px] text-(--text-muted) whitespace-nowrap">
+                        {monitor.interval_seconds}s
+                      </td>
+                      <td className="px-3.5 py-3 text-[12px] text-(--text-muted) [font-variant-numeric:tabular-nums]">
+                        {monitor.last_response_time_ms != null
+                          ? `${monitor.last_response_time_ms}ms`
+                          : "—"}
+                      </td>
+                      <td className="px-3.5 py-3 text-[11px] text-(--text-dim) font-mono whitespace-nowrap">
+                        {formatDateTime(monitor.last_check_at)}
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleRunNow(monitor)}
+                            disabled={runningId === monitor.id}
+                            title="Run check now"
+                            className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
+                          >
+                            <RefreshCw
+                              size={13}
+                              className={
+                                runningId === monitor.id ? "animate-spin" : ""
+                              }
+                            />
+                          </button>
+                          <button
+                            onClick={() => handleToggleActive(monitor)}
+                            title={monitor.is_active ? "Pause" : "Resume"}
+                            className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
+                          >
+                            {monitor.is_active ? (
+                              <Pause size={13} />
+                            ) : (
+                              <Play size={13} />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setShowFormFor(monitor)}
+                            title="Edit"
+                            className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--text-muted) cursor-pointer flex items-center"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(monitor)}
+                            title="Delete"
+                            className="bg-transparent border border-(--border) rounded-[5px] px-2 py-1 text-(--error) cursor-pointer flex items-center"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <LivePingsCard monitors={monitors} />
       </div>
 
       {showFormFor && (

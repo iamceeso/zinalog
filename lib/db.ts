@@ -2002,6 +2002,25 @@ export async function listMonitorChecks(
   )) as MonitorCheck[];
 }
 
+export interface RecentMonitorCheck extends MonitorCheck {
+  monitor_name: string;
+  monitor_type: MonitorType;
+}
+
+export async function listRecentChecksAcrossMonitors(
+  limit = 20
+): Promise<RecentMonitorCheck[]> {
+  const database = await getDb();
+  return (await database.all<RecentMonitorCheck[]>(
+    `SELECT c.*, m.name as monitor_name, m.type as monitor_type
+     FROM monitor_checks c
+     JOIN monitors m ON m.id = c.monitor_id
+     ORDER BY c.checked_at DESC, c.id DESC
+     LIMIT ?`,
+    [limit]
+  )) as RecentMonitorCheck[];
+}
+
 export async function getMonitorUptimeStats(
   monitorId: number,
   hours = 24
