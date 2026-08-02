@@ -358,9 +358,13 @@ test("checkHttp sends decrypted custom headers and ignores malformed stored head
 test("checkHttp sends default browser-compatible headers that custom headers can override", async () => {
   await withHttpServer(
     (req, res) => {
-      const hasUserAgent = req.headers["user-agent"] === "ZinaLog/0.1 (+https://zinalog.com)";
+      const hasUserAgent = req.headers["user-agent"]?.includes("Mozilla/5.0");
       const hasAccept = req.headers["accept"]?.includes("text/html");
-      res.writeHead(hasUserAgent && hasAccept ? 200 : 403);
+      const hasLanguage = req.headers["accept-language"]?.includes("en-US");
+      const hasFetchMode = req.headers["sec-fetch-mode"] === "navigate";
+      res.writeHead(
+        hasUserAgent && hasAccept && hasLanguage && hasFetchMode ? 200 : 403
+      );
       res.end();
     },
     async (port) => {
