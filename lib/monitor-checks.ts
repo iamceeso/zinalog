@@ -28,7 +28,10 @@ function parseExpectedStatus(spec: string): (code: number) => boolean {
   return (code) => ranges.some((r) => code >= r.min && code <= r.max);
 }
 
-export function describeFetchError(err: unknown, timeoutSeconds: number): string {
+export function describeFetchError(
+  err: unknown,
+  timeoutSeconds: number
+): string {
   if (err instanceof Error) {
     if (err.name === "AbortError" || err.name === "TimeoutError") {
       return `Request timed out after ${timeoutSeconds}s`;
@@ -59,7 +62,10 @@ export function buildSslInfo(
 }
 
 export interface TlsSocketLike {
-  once(event: "secureConnect" | "timeout" | "error", listener: () => void): unknown;
+  once(
+    event: "secureConnect" | "timeout" | "error",
+    listener: () => void
+  ): unknown;
   getPeerCertificate(): PeerCertificate;
   authorized: boolean;
   destroy(): unknown;
@@ -147,6 +153,17 @@ export async function checkHttp(monitor: Monitor): Promise<MonitorCheckResult> {
       dispatcher: agent,
     });
     const responseTime = Date.now() - start;
+    if (res.status === 403 && res.headers.get("cf-mitigated") === "challenge") {
+      result = {
+        status: "blocked",
+        status_code: res.status,
+        response_time_ms: responseTime,
+        error: "Cloudflare Managed Challenge",
+      };
+      await res.body?.cancel();
+      return result;
+    }
+
     const isExpected = parseExpectedStatus(monitor.expected_status)(res.status);
     result = {
       status: isExpected ? "up" : "down",

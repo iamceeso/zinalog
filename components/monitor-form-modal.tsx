@@ -12,7 +12,15 @@ const sectionCls =
   "text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px] mt-1";
 const checkboxRowCls = "flex items-center gap-2 text-[13px] text-(--text-base)";
 
-const HTTP_METHODS = ["GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"];
+const HTTP_METHODS = [
+  "GET",
+  "POST",
+  "HEAD",
+  "PUT",
+  "DELETE",
+  "PATCH",
+  "OPTIONS",
+];
 
 function targetPlaceholder(type: MonitorType): string {
   if (type === "http") return "https://example.com/health";
@@ -21,7 +29,9 @@ function targetPlaceholder(type: MonitorType): string {
 
 function parseHeadersForSubmit(
   text: string
-): { ok: true; value: string | Record<string, string> | null } | { ok: false; error: string } {
+):
+  | { ok: true; value: string | Record<string, string> | null }
+  | { ok: false; error: string } {
   const trimmed = text.trim();
   if (!trimmed) return { ok: true, value: null };
   if (trimmed === MASKED_SECRET) return { ok: true, value: MASKED_SECRET };
@@ -33,7 +43,10 @@ function parseHeadersForSubmit(
       Array.isArray(parsed) ||
       Object.values(parsed).some((v) => typeof v !== "string")
     ) {
-      return { ok: false, error: "Headers must be a JSON object of string values" };
+      return {
+        ok: false,
+        error: "Headers must be a JSON object of string values",
+      };
     }
     return { ok: true, value: parsed as Record<string, string> };
   } catch {
@@ -115,12 +128,14 @@ export default function MonitorFormModal({
   const [form, setForm] = useState<FormState>(() => initialState(monitor));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const submit = async () => {
     setError("");
+    setSaved(false);
 
     if (!form.name.trim()) {
       setError("Name is required");
@@ -135,7 +150,10 @@ export default function MonitorFormModal({
       return;
     }
 
-    const headersResult = form.type === "http" ? parseHeadersForSubmit(form.headers) : { ok: true as const, value: null };
+    const headersResult =
+      form.type === "http"
+        ? parseHeadersForSubmit(form.headers)
+        : { ok: true as const, value: null };
     if (!headersResult.ok) {
       setError(headersResult.error);
       return;
@@ -160,7 +178,8 @@ export default function MonitorFormModal({
       body.method = form.method;
       body.headers = headersResult.value;
       body.basic_auth_user = form.basicAuthUser.trim() || null;
-      body.basic_auth_pass = form.basicAuthPass === "" ? null : form.basicAuthPass;
+      body.basic_auth_pass =
+        form.basicAuthPass === "" ? null : form.basicAuthPass;
       body.expected_status = form.expectedStatus.trim() || "200-299";
       body.follow_redirects = form.followRedirects;
       body.verify_ssl = form.verifySsl;
@@ -178,10 +197,15 @@ export default function MonitorFormModal({
       );
       const data = await res.json();
       if (!res.ok) {
-        setError(data.details ? data.details.join("; ") : data.error ?? "Failed to save monitor");
+        setError(
+          data.details
+            ? data.details.join("; ")
+            : (data.error ?? "Failed to save monitor")
+        );
         return;
       }
       onSaved(data.monitor);
+      setSaved(true);
     } finally {
       setLoading(false);
     }
@@ -191,15 +215,12 @@ export default function MonitorFormModal({
     <DialogShell
       title={isEdit ? "Edit Monitor" : "New Monitor"}
       onClose={onClose}
-      widthClassName={form.type === "http" ? "w-full max-w-[860px]" : "w-full max-w-[560px]"}
+      closeOnBackdrop={false}
+      widthClassName={
+        form.type === "http" ? "w-full max-w-[860px]" : "w-full max-w-[560px]"
+      }
       footer={
         <>
-          <button
-            onClick={onClose}
-            className="bg-(--bg-card) border border-(--border) rounded-md py-2.25 px-4 text-[13px] text-(--text-muted) cursor-pointer"
-          >
-            Cancel
-          </button>
           <button
             onClick={submit}
             disabled={loading}
@@ -211,7 +232,13 @@ export default function MonitorFormModal({
       }
     >
       <div className="flex flex-col gap-3.5 max-h-[85vh] overflow-y-auto pr-1">
-        <div className={form.type === "http" ? "grid grid-cols-2 gap-x-6 gap-y-3.5" : "flex flex-col gap-3.5"}>
+        <div
+          className={
+            form.type === "http"
+              ? "grid grid-cols-2 gap-x-6 gap-y-3.5"
+              : "flex flex-col gap-3.5"
+          }
+        >
           <div className="flex flex-col gap-3.5">
             <div>
               <label className={labelCls}>Name *</label>
@@ -229,7 +256,9 @@ export default function MonitorFormModal({
                 <label className={labelCls}>Type</label>
                 <select
                   value={form.type}
-                  onChange={(e) => update("type", e.target.value as MonitorType)}
+                  onChange={(e) =>
+                    update("type", e.target.value as MonitorType)
+                  }
                   className={inputCls}
                 >
                   <option value="http">HTTP/HTTPS</option>
@@ -336,7 +365,9 @@ export default function MonitorFormModal({
                   <input
                     type="checkbox"
                     checked={form.followRedirects}
-                    onChange={(e) => update("followRedirects", e.target.checked)}
+                    onChange={(e) =>
+                      update("followRedirects", e.target.checked)
+                    }
                   />
                   Follow redirects
                 </label>
@@ -411,6 +442,12 @@ export default function MonitorFormModal({
         {error && (
           <div className="px-3 py-2 bg-[rgba(248,81,73,0.1)] border border-[rgba(248,81,73,0.3)] rounded-md text-[12px] text-(--error)">
             {error}
+          </div>
+        )}
+
+        {saved && (
+          <div className="px-3 py-2 bg-[rgba(63,185,80,0.1)] border border-[rgba(63,185,80,0.3)] rounded-md text-[12px] text-(--success)">
+            Monitor saved
           </div>
         )}
       </div>

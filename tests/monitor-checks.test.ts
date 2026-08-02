@@ -179,12 +179,16 @@ test("buildSslInfo prefers the organization name and falls back to common name f
   );
   assert.equal(withOrg?.issuer, "Acme Corp");
   assert.equal(withOrg?.valid, true);
-  assert.equal(withOrg?.expires_at, new Date("Jan 1 00:00:00 2030 GMT").toISOString());
+  assert.equal(
+    withOrg?.expires_at,
+    new Date("Jan 1 00:00:00 2030 GMT").toISOString()
+  );
 
   const cnOnly = buildSslInfo(
-    { valid_to: "Jan 1 00:00:00 2030 GMT", issuer: { CN: "Acme CA" } } as Parameters<
-      typeof buildSslInfo
-    >[0],
+    {
+      valid_to: "Jan 1 00:00:00 2030 GMT",
+      issuer: { CN: "Acme CA" },
+    } as Parameters<typeof buildSslInfo>[0],
     false
   );
   assert.equal(cnOnly?.issuer, "Acme CA");
@@ -257,6 +261,23 @@ test("checkHttp reports down when the response status is outside the expected ra
       assert.equal(result.status, "down");
       assert.equal(result.status_code, 500);
       assert.match(result.error ?? "", /Unexpected status code 500/);
+    }
+  );
+});
+
+test("checkHttp reports blocked for Cloudflare managed challenges", async () => {
+  await withHttpServer(
+    (_req, res) => {
+      res.writeHead(403, { "cf-mitigated": "challenge" });
+      res.end("challenge");
+    },
+    async (port) => {
+      const result = await checkHttp(
+        baseMonitor({ target: `http://127.0.0.1:${port}/` })
+      );
+      assert.equal(result.status, "blocked");
+      assert.equal(result.status_code, 403);
+      assert.equal(result.error, "Cloudflare Managed Challenge");
     }
   );
 });
@@ -377,7 +398,9 @@ test("checkHttp sends default browser-compatible headers that custom headers can
 
   await withHttpServer(
     (req, res) => {
-      res.writeHead(req.headers["user-agent"] === "CustomAgent/1.0" ? 200 : 403);
+      res.writeHead(
+        req.headers["user-agent"] === "CustomAgent/1.0" ? 200 : 403
+      );
       res.end();
     },
     async (port) => {
@@ -614,7 +637,13 @@ test("getSslInfo ignores a late duplicate event once it has already settled", as
     },
   };
 
-  const result = await getSslInfo("example.com", 443, 1000, true, () => fakeSocket);
+  const result = await getSslInfo(
+    "example.com",
+    443,
+    1000,
+    true,
+    () => fakeSocket
+  );
   assert.ok(result);
   assert.equal(result?.issuer, "Acme Corp");
 });
@@ -645,7 +674,12 @@ test("checkTcp reports down with the connection error for a closed port", async 
 
 test("checkTcp defaults to port 0 when the monitor has no port set", async () => {
   const result = await checkTcp(
-    baseMonitor({ type: "tcp", target: "127.0.0.1", port: null, timeout_seconds: 1 })
+    baseMonitor({
+      type: "tcp",
+      target: "127.0.0.1",
+      port: null,
+      timeout_seconds: 1,
+    })
   );
   assert.equal(result.status, "down");
 });
@@ -684,7 +718,9 @@ test("checkTcp reports down on timeout using an injected socket, ignoring any la
 test("checkPing parses the round-trip time from ping output", async () => {
   const result = await checkPing(
     baseMonitor({ type: "ping", target: "127.0.0.1" }),
-    async () => ({ stdout: "64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=12.3 ms\n" })
+    async () => ({
+      stdout: "64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=12.3 ms\n",
+    })
   );
   assert.equal(result.status, "up");
   assert.equal(result.response_time_ms, 12);
@@ -703,11 +739,16 @@ test("checkPing reports down with the error message when the ping command fails"
   const result = await checkPing(
     baseMonitor({ type: "ping", target: "unreachable.invalid" }),
     async () => {
-      throw new Error("ping: unreachable.invalid: Name or service not known\nextra ignored line");
+      throw new Error(
+        "ping: unreachable.invalid: Name or service not known\nextra ignored line"
+      );
     }
   );
   assert.equal(result.status, "down");
-  assert.equal(result.error, "ping: unreachable.invalid: Name or service not known");
+  assert.equal(
+    result.error,
+    "ping: unreachable.invalid: Name or service not known"
+  );
 });
 
 test("checkPing reports a generic failure message for non-Error rejections", async () => {
@@ -723,7 +764,9 @@ test("checkPing reports a generic failure message for non-Error rejections", asy
 });
 
 test("checkPing works end-to-end against localhost using the real ping binary", async () => {
-  const result = await checkPing(baseMonitor({ type: "ping", target: "127.0.0.1" }));
+  const result = await checkPing(
+    baseMonitor({ type: "ping", target: "127.0.0.1" })
+  );
   assert.equal(result.status, "up");
 });
 

@@ -10,6 +10,7 @@ interface DialogShellProps {
   footer?: ReactNode;
   onClose: () => void;
   danger?: boolean;
+  closeOnBackdrop?: boolean;
   widthClassName?: string;
 }
 
@@ -20,12 +21,15 @@ export default function DialogShell({
   footer,
   onClose,
   danger = false,
+  closeOnBackdrop = true,
   widthClassName = "w-full max-w-[560px]",
 }: DialogShellProps) {
   return (
     <div
       className="fixed inset-0 z-200 bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) =>
+        closeOnBackdrop && e.target === e.currentTarget && onClose()
+      }
     >
       <div
         className={`animate-fade-in bg-(--bg-surface) rounded-xl border ${danger ? "border-[rgba(248,81,73,0.3)]" : "border-(--border)"} shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${widthClassName}`}

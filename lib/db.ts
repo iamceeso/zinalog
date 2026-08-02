@@ -1683,7 +1683,7 @@ export async function deleteAllUserAccessAuditLogs(): Promise<number> {
 //  Monitors
 
 export type MonitorType = "http" | "tcp" | "ping";
-export type MonitorStatus = "up" | "down" | "pending";
+export type MonitorStatus = "up" | "down" | "blocked" | "pending";
 
 export interface Monitor {
   id: number;
@@ -1720,7 +1720,7 @@ export interface Monitor {
 export interface MonitorCheck {
   id: number;
   monitor_id: number;
-  status: "up" | "down";
+  status: "up" | "down" | "blocked";
   status_code: number | null;
   response_time_ms: number | null;
   error: string | null;
@@ -1728,7 +1728,7 @@ export interface MonitorCheck {
 }
 
 export interface MonitorCheckResult {
-  status: "up" | "down";
+  status: "up" | "down" | "blocked";
   status_code?: number | null;
   response_time_ms?: number | null;
   error?: string | null;
@@ -1981,6 +1981,9 @@ export async function recordMonitorCheck(
   if (result.status === "up") {
     consecutiveFails = 0;
     newStatus = "up";
+  } else if (result.status === "blocked") {
+    consecutiveFails = 0;
+    newStatus = "blocked";
   } else {
     consecutiveFails += 1;
     if (consecutiveFails > monitor.retries) {
@@ -2068,7 +2071,7 @@ export async function getMonitorUptimeStats(
     avg_ms: number | null;
   }>(
     `SELECT
-       COUNT(*) as total,
+       SUM(CASE WHEN status IN ('up', 'down') THEN 1 ELSE 0 END) as total,
        SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as up,
        AVG(CASE WHEN status = 'up' THEN response_time_ms ELSE NULL END) as avg_ms
      FROM monitor_checks

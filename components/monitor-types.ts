@@ -1,5 +1,5 @@
 export type MonitorType = "http" | "tcp" | "ping";
-export type MonitorStatus = "up" | "down" | "pending";
+export type MonitorStatus = "up" | "down" | "blocked" | "pending";
 
 export interface ClientMonitor {
   id: number;
@@ -36,7 +36,7 @@ export interface ClientMonitor {
 export interface ClientMonitorCheck {
   id: number;
   monitor_id: number;
-  status: "up" | "down";
+  status: "up" | "down" | "blocked";
   status_code: number | null;
   response_time_ms: number | null;
   error: string | null;

@@ -49,8 +49,17 @@ function daysUntil(dt: string): number {
 const STATUS_COLOR: Record<string, string> = {
   up: "var(--success)",
   down: "var(--error)",
+  blocked: "var(--warning)",
   pending: "var(--text-dim)",
 };
+
+function formatStatus(status: string, isActive = true): string {
+  if (!isActive) return "Paused";
+  if (status === "up") return "Up";
+  if (status === "down") return "Down";
+  if (status === "blocked") return "Blocked";
+  return "Pending";
+}
 
 export default function MonitorDetailPage() {
   const params = useParams<{ id: string }>();
@@ -161,6 +170,7 @@ export default function MonitorDetailPage() {
   const domainDays = monitor.domain_expires_at
     ? daysUntil(monitor.domain_expires_at)
     : null;
+  const latestBlockedCheck = checks.find((check) => check.status === "blocked");
 
   const checksTotalPages = Math.max(
     1,
@@ -225,19 +235,22 @@ export default function MonitorDetailPage() {
         <div className="flex-1 min-w-40">
           <StatCard
             title="Status"
-            value={
-              monitor.status === "up"
-                ? "Up"
-                : monitor.status === "down"
-                  ? "Down"
-                  : "Pending"
+            value={formatStatus(monitor.status, monitor.is_active === 1)}
+            subtitle={
+              monitor.status === "blocked"
+                ? (latestBlockedCheck?.error ?? "Request blocked")
+                : undefined
             }
             accent={
-              monitor.status === "up"
-                ? "success"
-                : monitor.status === "down"
-                  ? "error"
-                  : "default"
+              monitor.is_active !== 1
+                ? "default"
+                : monitor.status === "up"
+                  ? "success"
+                  : monitor.status === "down"
+                    ? "error"
+                    : monitor.status === "blocked"
+                      ? "warning"
+                      : "default"
             }
           />
         </div>
@@ -307,6 +320,22 @@ export default function MonitorDetailPage() {
         )}
       </div>
 
+      {monitor.status === "blocked" && (
+        <div className="bg-(--bg-card) border border-(--border) rounded-[10px] px-5 py-4 flex flex-col gap-2">
+          <div className="text-[13px] font-semibold text-foreground">
+            Reason
+          </div>
+          <div className="text-[13px] text-(--warning)">
+            {latestBlockedCheck?.error ?? "Request blocked"}
+          </div>
+          <div className="text-[12px] text-(--text-dim) leading-relaxed">
+            The target is protected by an intermediary such as Cloudflare, a
+            WAF, or authentication. The monitoring server cannot access the site
+            without passing that protection.
+          </div>
+        </div>
+      )}
+
       <div className="bg-(--bg-card) border border-(--border) rounded-[10px] px-5 py-4 flex flex-col gap-3">
         <div className="text-[13px] font-semibold text-foreground">
           Response Time
@@ -357,7 +386,7 @@ export default function MonitorDetailPage() {
                         className="w-1.5 h-1.5 rounded-full"
                         style={{ background: STATUS_COLOR[check.status] }}
                       />
-                      {check.status === "up" ? "Up" : "Down"}
+                      {formatStatus(check.status)}
                     </span>
                   </td>
                   <td className="px-3.5 py-2.5 text-[12px] text-(--text-muted) font-mono">
@@ -443,7 +472,6 @@ export default function MonitorDetailPage() {
           onClose={() => setShowEdit(false)}
           onSaved={(updated) => {
             setMonitor(updated);
-            setShowEdit(false);
           }}
         />
       )}

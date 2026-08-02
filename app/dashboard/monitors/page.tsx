@@ -57,6 +57,10 @@ function StatusPill({ status }: { status: MonitorStatus }) {
       label: "Down",
       cls: "bg-[rgba(248,81,73,0.15)] text-(--error) border-[rgba(248,81,73,0.3)]",
     },
+    blocked: {
+      label: "Blocked",
+      cls: "bg-[rgba(210,153,34,0.15)] text-(--warning) border-[rgba(210,153,34,0.3)]",
+    },
     pending: {
       label: "Pending",
       cls: "bg-[rgba(139,148,158,0.15)] text-(--text-dim) border-[rgba(139,148,158,0.3)]",
@@ -73,7 +77,9 @@ function StatusPill({ status }: { status: MonitorStatus }) {
             ? "bg-(--success)"
             : status === "down"
               ? "bg-(--error)"
-              : "bg-(--text-dim)"
+              : status === "blocked"
+                ? "bg-(--warning)"
+                : "bg-(--text-dim)"
         }`}
       />
       {label}
@@ -117,8 +123,7 @@ export default function MonitorsPage() {
     };
   }, []);
 
-  const handleSaved = (monitor: ClientMonitor) => {
-    setShowFormFor(null);
+  const upsertMonitor = (monitor: ClientMonitor) => {
     setMonitors((prev) => {
       const exists = prev.some((m) => m.id === monitor.id);
       return exists
@@ -161,7 +166,7 @@ export default function MonitorsPage() {
       }),
     });
     const data = await res.json();
-    if (data.monitor) handleSaved(data.monitor);
+    if (data.monitor) upsertMonitor(data.monitor);
   };
 
   const handleRunNow = async (monitor: ClientMonitor) => {
@@ -193,7 +198,7 @@ export default function MonitorsPage() {
         return;
       }
       if (data.monitor) {
-        handleSaved(data.monitor);
+        upsertMonitor(data.monitor);
         setShowFormFor(data.monitor);
       }
     } finally {
@@ -373,7 +378,10 @@ export default function MonitorsPage() {
         <MonitorFormModal
           monitor={showFormFor === "new" ? undefined : showFormFor}
           onClose={() => setShowFormFor(null)}
-          onSaved={handleSaved}
+          onSaved={(monitor) => {
+            upsertMonitor(monitor);
+            setShowFormFor(monitor);
+          }}
         />
       )}
 

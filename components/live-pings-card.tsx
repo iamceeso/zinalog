@@ -14,9 +14,10 @@ const TYPE_ICON: Record<MonitorType, typeof Globe> = {
   ping: Radio,
 };
 
-const STATUS_COLOR: Record<"up" | "down", string> = {
+const STATUS_COLOR: Record<"up" | "down" | "blocked", string> = {
   up: "var(--success)",
   down: "var(--error)",
+  blocked: "var(--warning)",
 };
 
 function formatRelativeTime(dt: string): string {
@@ -62,6 +63,9 @@ export default function LivePingsCard({
   const downCount = monitors.filter(
     (m) => m.is_active === 1 && m.status === "down"
   ).length;
+  const blockedCount = monitors.filter(
+    (m) => m.is_active === 1 && m.status === "blocked"
+  ).length;
   const pausedCount = monitors.filter((m) => m.is_active !== 1).length;
 
   return (
@@ -76,7 +80,7 @@ export default function LivePingsCard({
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 px-4 py-3 border-b border-(--border)">
+      <div className="grid grid-cols-4 gap-2 px-4 py-3 border-b border-(--border)">
         <div className="flex flex-col items-center gap-0.5">
           <span className="text-[15px] font-bold text-(--success)">
             {upCount}
@@ -91,6 +95,14 @@ export default function LivePingsCard({
           </span>
           <span className="text-[10px] text-(--text-dim) uppercase tracking-[0.5px]">
             Down
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[15px] font-bold text-(--warning)">
+            {blockedCount}
+          </span>
+          <span className="text-[10px] text-(--text-dim) uppercase tracking-[0.5px]">
+            Blocked
           </span>
         </div>
         <div className="flex flex-col items-center gap-0.5">
@@ -130,7 +142,9 @@ export default function LivePingsCard({
                       ? check.response_time_ms != null
                         ? `${check.response_time_ms}ms`
                         : "OK"
-                      : (check.error ?? "Failed")}
+                      : check.status === "blocked"
+                        ? (check.error ?? "Blocked")
+                        : (check.error ?? "Failed")}
                   </div>
                 </div>
                 <span className="text-[10px] text-(--text-dim) font-mono whitespace-nowrap shrink-0">
