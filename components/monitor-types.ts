@@ -26,6 +26,8 @@ export interface ClientMonitor {
   ssl_expires_at: string | null;
   ssl_issuer: string | null;
   ssl_valid: number | null;
+  domain_expires_at: string | null;
+  domain_registrar: string | null;
   created_at: string;
   updated_at: string;
   last_response_time_ms?: number | null;

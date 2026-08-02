@@ -1710,6 +1710,9 @@ export interface Monitor {
   ssl_expires_at: string | null;
   ssl_issuer: string | null;
   ssl_valid: number | null;
+  domain_expires_at: string | null;
+  domain_registrar: string | null;
+  domain_checked_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1779,6 +1782,37 @@ export async function getDueMonitors(): Promise<Monitor[]> {
        OR datetime(last_check_at, '+' || interval_seconds || ' seconds') <= datetime('now')
      )`
   )) as Monitor[];
+}
+
+// Domain registration WHOIS data changes far slower than uptime, so it's
+// refreshed on its own daily cadence rather than every check.
+export async function getMonitorsDueForDomainRefresh(
+  limit = 5
+): Promise<Monitor[]> {
+  const database = await getDb();
+  return (await database.all<Monitor[]>(
+    `SELECT * FROM monitors
+     WHERE is_active = 1
+     AND (
+       domain_checked_at IS NULL
+       OR datetime(domain_checked_at, '+1 day') <= datetime('now')
+     )
+     LIMIT ?`,
+    [limit]
+  )) as Monitor[];
+}
+
+export async function updateMonitorDomainInfo(
+  id: number,
+  data: { expires_at: string | null; registrar: string | null }
+): Promise<void> {
+  const database = await getDb();
+  await database.run(
+    `UPDATE monitors
+     SET domain_expires_at = ?, domain_registrar = ?, domain_checked_at = datetime('now')
+     WHERE id = ?`,
+    [data.expires_at, data.registrar, id]
+  );
 }
 
 export async function createMonitor(data: {
@@ -1906,9 +1940,7 @@ export async function updateMonitor(
 
 export async function deleteMonitor(id: number): Promise<boolean> {
   const database = await getDb();
-  const result = await database.run("DELETE FROM monitors WHERE id = ?", [
-    id,
-  ]);
+  const result = await database.run("DELETE FROM monitors WHERE id = ?", [id]);
   return (result.changes ?? 0) > 0;
 }
 
@@ -2046,8 +2078,7 @@ export async function getMonitorUptimeStats(
 
   const total = row?.total ?? 0;
   return {
-    uptimePercent:
-      total > 0 ? Math.round((row!.up / total) * 1000) / 10 : null,
+    uptimePercent: total > 0 ? Math.round((row!.up / total) * 1000) / 10 : null,
     avgResponseMs: row?.avg_ms != null ? Math.round(row.avg_ms) : null,
     totalChecks: total,
   };

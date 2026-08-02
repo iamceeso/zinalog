@@ -12,12 +12,16 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 import ConfirmModal from "@/components/confirm-modal";
 import MonitorFormModal from "@/components/monitor-form-modal";
 import MonitorResponseChart from "@/components/monitor-response-chart";
 import StatCard from "@/components/stat-card";
-import type { ClientMonitor, ClientMonitorCheck } from "@/components/monitor-types";
+import type {
+  ClientMonitor,
+  ClientMonitorCheck,
+} from "@/components/monitor-types";
 
 interface Stats {
   uptimePercent: number | null;
@@ -37,7 +41,9 @@ function formatDateTime(dt: string | null): string {
 }
 
 function daysUntil(dt: string): number {
-  return Math.ceil((new Date(dt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  return Math.ceil(
+    (new Date(dt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -149,9 +155,17 @@ export default function MonitorDetailPage() {
     );
   }
 
-  const sslDays = monitor.ssl_expires_at ? daysUntil(monitor.ssl_expires_at) : null;
+  const sslDays = monitor.ssl_expires_at
+    ? daysUntil(monitor.ssl_expires_at)
+    : null;
+  const domainDays = monitor.domain_expires_at
+    ? daysUntil(monitor.domain_expires_at)
+    : null;
 
-  const checksTotalPages = Math.max(1, Math.ceil(checks.length / checksPageSize));
+  const checksTotalPages = Math.max(
+    1,
+    Math.ceil(checks.length / checksPageSize)
+  );
   const checksPageClamped = Math.min(checksPage, checksTotalPages);
   const visibleChecks = checks.slice(
     (checksPageClamped - 1) * checksPageSize,
@@ -207,43 +221,89 @@ export default function MonitorDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Status"
-          value={monitor.status === "up" ? "Up" : monitor.status === "down" ? "Down" : "Pending"}
-          accent={monitor.status === "up" ? "success" : monitor.status === "down" ? "error" : "default"}
-        />
-        <StatCard
-          title="Uptime (24h)"
-          value={stats?.uptimePercent != null ? `${stats.uptimePercent}%` : "-"}
-          accent="info"
-        />
-        <StatCard
-          title="Avg Response (24h)"
-          value={stats?.avgResponseMs != null ? `${stats.avgResponseMs}ms` : "-"}
-        />
-        {monitor.type === "http" && monitor.target.startsWith("https:") ? (
+      <div className="flex flex-wrap gap-4">
+        <div className="flex-1 min-w-40">
           <StatCard
-            title="SSL Expiry"
-            value={sslDays != null ? `${sslDays}d` : "-"}
-            subtitle={monitor.ssl_issuer ?? undefined}
-            icon={
-              monitor.ssl_valid === 0 ? (
-                <ShieldAlert size={16} />
-              ) : (
-                <ShieldCheck size={16} />
-              )
+            title="Status"
+            value={
+              monitor.status === "up"
+                ? "Up"
+                : monitor.status === "down"
+                  ? "Down"
+                  : "Pending"
             }
             accent={
-              sslDays != null && sslDays < 14
-                ? "warning"
-                : monitor.ssl_valid === 0
+              monitor.status === "up"
+                ? "success"
+                : monitor.status === "down"
                   ? "error"
-                  : "success"
+                  : "default"
             }
           />
+        </div>
+        <div className="flex-1 min-w-40">
+          <StatCard
+            title="Uptime (24h)"
+            value={
+              stats?.uptimePercent != null ? `${stats.uptimePercent}%` : "-"
+            }
+            accent="info"
+          />
+        </div>
+        <div className="flex-1 min-w-40">
+          <StatCard
+            title="Avg Response (24h)"
+            value={
+              stats?.avgResponseMs != null ? `${stats.avgResponseMs}ms` : "-"
+            }
+          />
+        </div>
+        {monitor.type === "http" && monitor.target.startsWith("https:") && (
+          <div className="flex-1 min-w-40">
+            <StatCard
+              title="SSL Expiry"
+              value={sslDays != null ? `${sslDays}d` : "-"}
+              subtitle={monitor.ssl_issuer ?? undefined}
+              icon={
+                monitor.ssl_valid === 0 ? (
+                  <ShieldAlert size={16} />
+                ) : (
+                  <ShieldCheck size={16} />
+                )
+              }
+              accent={
+                sslDays != null && sslDays < 14
+                  ? "warning"
+                  : monitor.ssl_valid === 0
+                    ? "error"
+                    : "success"
+              }
+            />
+          </div>
+        )}
+        {monitor.type === "http" ? (
+          <div className="flex-1 min-w-40">
+            <StatCard
+              title="Domain Expiry"
+              value={domainDays != null ? `${domainDays}d` : "-"}
+              subtitle={monitor.domain_registrar ?? undefined}
+              icon={<Calendar size={16} />}
+              accent={
+                domainDays != null && domainDays < 14
+                  ? "warning"
+                  : domainDays != null
+                    ? "success"
+                    : "default"
+              }
+            />
+          </div>
         ) : (
-          <StatCard title="Last Check" value={formatDateTime(monitor.last_check_at)} />
+          <div className="flex-1 min-w-40">
+            <StatCard
+              title="Last Check"
+              value={formatDateTime(monitor.last_check_at)}
+            />
+          </div>
         )}
       </div>
 
@@ -266,21 +326,27 @@ export default function MonitorDetailPage() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-(--bg-surface) border-b border-(--border)">
-                {["Status", "Code", "Response Time", "Error", "Checked At"].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px]"
-                  >
-                    {h}
-                  </th>
-                ))}
+                {["Status", "Code", "Response Time", "Error", "Checked At"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="px-3.5 py-2.5 text-left text-[11px] font-semibold text-(--text-dim) uppercase tracking-[0.5px]"
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
               {visibleChecks.map((check, i) => (
                 <tr
                   key={check.id}
-                  className={i < visibleChecks.length - 1 ? "border-b border-(--border)" : ""}
+                  className={
+                    i < visibleChecks.length - 1
+                      ? "border-b border-(--border)"
+                      : ""
+                  }
                 >
                   <td className="px-3.5 py-2.5">
                     <span
@@ -298,7 +364,9 @@ export default function MonitorDetailPage() {
                     {check.status_code ?? "-"}
                   </td>
                   <td className="px-3.5 py-2.5 text-[12px] text-(--text-muted) [font-variant-numeric:tabular-nums]">
-                    {check.response_time_ms != null ? `${check.response_time_ms}ms` : "-"}
+                    {check.response_time_ms != null
+                      ? `${check.response_time_ms}ms`
+                      : "-"}
                   </td>
                   <td className="px-3.5 py-2.5 text-[12px] text-(--error) max-w-70 truncate">
                     {check.error ?? ""}
@@ -352,7 +420,9 @@ export default function MonitorDetailPage() {
                 </span>
                 <button
                   disabled={checksPageClamped >= checksTotalPages}
-                  onClick={() => setChecksPage((p) => Math.min(checksTotalPages, p + 1))}
+                  onClick={() =>
+                    setChecksPage((p) => Math.min(checksTotalPages, p + 1))
+                  }
                   className={`bg-(--bg-surface) border border-(--border) rounded-md px-2 py-1.5 flex items-center ${
                     checksPageClamped >= checksTotalPages
                       ? "text-(--text-dim) cursor-not-allowed opacity-50"

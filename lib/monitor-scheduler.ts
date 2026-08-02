@@ -1,12 +1,16 @@
 import {
   getDueMonitors,
+  getMonitorsDueForDomainRefresh,
   recordMonitorCheck,
+  updateMonitorDomainInfo,
   type Monitor,
   type MonitorCheckOutcome,
   type MonitorStatus,
 } from "./db";
+import { isIpAddress } from "./domain-utils";
 import { runMonitorCheck } from "./monitor-checks";
 import { sendAllNotifications } from "./notifications";
+import { getDomainInfo } from "./whois";
 
 declare global {
   var __monitorSchedulerStarted: boolean | undefined;
@@ -92,9 +96,58 @@ export async function runDueChecks(): Promise<void> {
   }
 }
 
+export function extractHostname(monitor: Monitor): string | null {
+  if (monitor.type !== "http") return monitor.target;
+  try {
+    return new URL(monitor.target).hostname;
+  } catch {
+    return null;
+  }
+}
+
+export async function runDueDomainRefreshes(): Promise<void> {
+  const due = await getMonitorsDueForDomainRefresh();
+  if (due.length === 0) return;
+
+  await Promise.all(
+    due.map(async (monitor) => {
+      const hostname = extractHostname(monitor);
+      if (!hostname || isIpAddress(hostname)) {
+        // Nothing to look up, but stamp domain_checked_at so this monitor
+        // isn't re-selected on every tick.
+        await updateMonitorDomainInfo(monitor.id, {
+          expires_at: null,
+          registrar: null,
+        }).catch(() => {});
+        return;
+      }
+
+      try {
+        const info = await getDomainInfo(hostname);
+        await updateMonitorDomainInfo(monitor.id, {
+          expires_at: info?.expires_at ?? null,
+          registrar: info?.registrar ?? null,
+        });
+      } catch (err) {
+        console.error(
+          `[monitor-scheduler] domain refresh failed for monitor ${monitor.id}`,
+          err
+        );
+        await updateMonitorDomainInfo(monitor.id, {
+          expires_at: null,
+          registrar: null,
+        }).catch(() => {});
+      }
+    })
+  );
+}
+
 function tick(): void {
   runDueChecks().catch((err) =>
     console.error("[monitor-scheduler] tick failed", err)
+  );
+  runDueDomainRefreshes().catch((err) =>
+    console.error("[monitor-scheduler] domain refresh tick failed", err)
   );
 }
 
