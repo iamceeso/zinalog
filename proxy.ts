@@ -10,6 +10,10 @@ const ADMIN_MUTATION_PATHS = [
   "/api/keys",
   "/api/settings",
   "/api/users",
+  "/api/monitors",
+  "/api/auth/logout",
+  "/api/auth/change-password",
+  "/api/auth/mfa/verify",
 ];
 
 const MUTATION_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
