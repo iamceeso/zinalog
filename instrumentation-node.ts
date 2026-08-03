@@ -1,3 +1,3 @@
-import { ensureMonitorSchedulerStarted } from "@/lib/monitor-scheduler";
+import { ensureMonitorSchedulerStarted } from "@/lib/monitors/scheduler";
 
 ensureMonitorSchedulerStarted();

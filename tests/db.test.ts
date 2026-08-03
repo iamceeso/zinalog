@@ -8,7 +8,20 @@ import test from "node:test";
 type DbModule = typeof import("../lib/db");
 
 const compiledDbModulePath = path.resolve(__dirname, "../lib/db.js");
+const compiledDbSubmodulePaths = [
+  "core",
+  "logs",
+  "api-keys",
+  "settings",
+  "users",
+  "monitors",
+].map((name) => path.resolve(__dirname, `../lib/db/${name}.js`));
 const cjsRequire = createRequire(__filename);
+
+function clearDbModuleCache(): void {
+  delete cjsRequire.cache[compiledDbModulePath];
+  for (const p of compiledDbSubmodulePaths) delete cjsRequire.cache[p];
+}
 
 const TEST_ENCRYPTION_KEY = "a".repeat(64);
 
@@ -23,7 +36,7 @@ async function loadDbModule() {
   process.env.DATABASE_PATH = databasePath;
   process.env.ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
   delete global.__dbPromise;
-  delete cjsRequire.cache[compiledDbModulePath];
+  clearDbModuleCache();
   const dbModule = cjsRequire(compiledDbModulePath) as DbModule;
 
   return {
@@ -60,7 +73,7 @@ async function closeAndCleanup(
     process.env.ENCRYPTION_KEY = previousEncryptionKey;
   }
   delete global.__dbPromise;
-  delete cjsRequire.cache[compiledDbModulePath];
+  clearDbModuleCache();
   await fs.rm(tempDir, { recursive: true, force: true });
 }
 

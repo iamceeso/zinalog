@@ -28,6 +28,19 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      {
+        // Keep authenticated pages out of the browser's HTTP cache and
+        // back/forward cache, so hitting "back" after a session ends
+        // (logout, expiry) can't render a stale page without the server
+        // re-checking auth and redirecting to /login.
+        source: "/dashboard/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, must-revalidate",
+          },
+        ],
+      },
     ];
   },
 };
