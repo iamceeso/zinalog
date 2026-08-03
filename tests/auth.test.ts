@@ -41,22 +41,10 @@ function createApiKey(overrides: Partial<ApiKey> = {}): ApiKey {
   };
 }
 
-function createRequest(input?: {
-  headers?: Record<string, string>;
-  ip?: string | null;
-}): NextRequest {
-  const request = new NextRequest("http://localhost/api/logs", {
+function createRequest(input?: { headers?: Record<string, string> }): NextRequest {
+  return new NextRequest("http://localhost/api/logs", {
     headers: new Headers(input?.headers),
   });
-
-  if (input && "ip" in input) {
-    Object.defineProperty(request, "ip", {
-      configurable: true,
-      value: input.ip,
-    });
-  }
-
-  return request;
 }
 
 async function loadAuthModule(options?: {
@@ -166,15 +154,21 @@ test("getClientIp normalizes direct request IP values", async (t) => {
   );
 
   assert.equal(
-    authModule.getClientIp(createRequest({ ip: "::ffff:192.0.2.10" })),
+    authModule.getClientIp(
+      createRequest({ headers: { "x-forwarded-for": "::ffff:192.0.2.10" } })
+    ),
     "192.0.2.10"
   );
   assert.equal(
-    authModule.getClientIp(createRequest({ ip: "fe80::1%eth0" })),
+    authModule.getClientIp(
+      createRequest({ headers: { "x-forwarded-for": "fe80::1%eth0" } })
+    ),
     "fe80::1"
   );
   assert.equal(
-    authModule.getClientIp(createRequest({ ip: "[2001:db8::1]" })),
+    authModule.getClientIp(
+      createRequest({ headers: { "x-forwarded-for": "[2001:db8::1]" } })
+    ),
     "2001:db8::1"
   );
 });
@@ -193,9 +187,21 @@ test("getClientIp trusts forwarded headers only when TRUST_PROXY is enabled", as
 
   const forwardedRequest = createRequest({
     headers: { "x-forwarded-for": "203.0.113.9, 10.0.0.1" },
-    ip: "192.0.2.2",
   });
-  assert.equal(direct.authModule.getClientIp(forwardedRequest), "192.0.2.2");
+  // A multi-hop chain could not have come from Next's own socket-address
+  // fallback, and without a declared trusted proxy there's no way to
+  // distinguish a real chain from one the client made up itself.
+  assert.equal(direct.authModule.getClientIp(forwardedRequest), "unknown");
+
+  // A bare single-value header is what Next.js itself sets from the raw
+  // socket's remote address when nothing upstream already set the header,
+  // so it's trusted even without a declared proxy.
+  assert.equal(
+    direct.authModule.getClientIp(
+      createRequest({ headers: { "x-forwarded-for": "192.0.2.2" } })
+    ),
+    "192.0.2.2"
+  );
 
   const proxied = await loadAuthModule({ trustProxy: true });
   t.after(async () =>
@@ -213,7 +219,6 @@ test("getClientIp trusts forwarded headers only when TRUST_PROXY is enabled", as
     proxied.authModule.getClientIp(
       createRequest({
         headers: { "x-real-ip": "::ffff:198.51.100.8" },
-        ip: "192.0.2.2",
       })
     ),
     "198.51.100.8"
@@ -300,8 +305,10 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
 
   const expired = await authModule.validateApiKey(
     createRequest({
-      headers: { authorization: "Bearer expired-key" },
-      ip: "192.168.1.12",
+      headers: {
+        authorization: "Bearer expired-key",
+        "x-forwarded-for": "192.168.1.12",
+      },
     })
   );
   assert.deepEqual(expired, {
@@ -312,8 +319,10 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
 
   const disallowed = await authModule.validateApiKey(
     createRequest({
-      headers: { authorization: "Bearer allowed-key" },
-      ip: "10.0.0.50",
+      headers: {
+        authorization: "Bearer allowed-key",
+        "x-forwarded-for": "10.0.0.50",
+      },
     })
   );
   assert.deepEqual(disallowed, {
@@ -324,8 +333,10 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
 
   const allowed = await authModule.validateApiKey(
     createRequest({
-      headers: { authorization: "Bearer allowed-key" },
-      ip: "2001:db8::42",
+      headers: {
+        authorization: "Bearer allowed-key",
+        "x-forwarded-for": "2001:db8::42",
+      },
     })
   );
   assert.equal(allowed.success, true);
@@ -333,16 +344,20 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
 
   const exactAllowed = await authModule.validateApiKey(
     createRequest({
-      headers: { authorization: "Bearer exact-ip-key" },
-      ip: "198.51.100.25",
+      headers: {
+        authorization: "Bearer exact-ip-key",
+        "x-forwarded-for": "198.51.100.25",
+      },
     })
   );
   assert.equal(exactAllowed.success, true);
 
   const invalidCidr = await authModule.validateApiKey(
     createRequest({
-      headers: { authorization: "Bearer invalid-cidr-key" },
-      ip: "198.51.100.25",
+      headers: {
+        authorization: "Bearer invalid-cidr-key",
+        "x-forwarded-for": "198.51.100.25",
+      },
     })
   );
   assert.deepEqual(invalidCidr, {
@@ -353,8 +368,10 @@ test("validateApiKey rejects missing, expired, and disallowed requests", async (
 
   const zeroPrefixAllowed = await authModule.validateApiKey(
     createRequest({
-      headers: { authorization: "Bearer zero-prefix-key" },
-      ip: "203.0.113.77",
+      headers: {
+        authorization: "Bearer zero-prefix-key",
+        "x-forwarded-for": "203.0.113.77",
+      },
     })
   );
   assert.equal(zeroPrefixAllowed.success, true);
@@ -405,8 +422,10 @@ test("validateApiKey increments usage only for requests within the rate limit", 
   const request = () =>
     authModule.validateApiKey(
       createRequest({
-        headers: { authorization: "Bearer burst-key" },
-        ip: "198.51.100.12",
+        headers: {
+          authorization: "Bearer burst-key",
+          "x-forwarded-for": "198.51.100.12",
+        },
       })
     );
 
@@ -471,8 +490,10 @@ test("validateApiKey resets rate limits after the window and skips limiting for 
   const unlimitedRequest = () =>
     authModule.validateApiKey(
       createRequest({
-        headers: { authorization: "Bearer unlimited-key" },
-        ip: "198.51.100.50",
+        headers: {
+          authorization: "Bearer unlimited-key",
+          "x-forwarded-for": "198.51.100.50",
+        },
       })
     );
 
@@ -482,8 +503,10 @@ test("validateApiKey resets rate limits after the window and skips limiting for 
   const singleBurstRequest = () =>
     authModule.validateApiKey(
       createRequest({
-        headers: { authorization: "Bearer single-burst-key" },
-        ip: "198.51.100.60",
+        headers: {
+          authorization: "Bearer single-burst-key",
+          "x-forwarded-for": "198.51.100.60",
+        },
       })
     );
 

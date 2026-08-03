@@ -114,9 +114,14 @@ export function normalizeIp(value: string | null | undefined): string | null {
   return ip.toLowerCase();
 }
 
+// Without a configured trusted proxy, only trust X-Forwarded-For when it
+// contains a single IP. A comma-separated value may have been supplied by the
+// client and cannot be distinguished from a legitimate proxy chain.
 function getDirectIp(req: NextRequest): string | null {
-  const candidate = (req as NextRequest & { ip?: string | null }).ip;
-  return normalizeIp(candidate);
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (!forwardedFor || forwardedFor.includes(",")) return null;
+
+  return normalizeIp(forwardedFor);
 }
 
 function getTrustedProxyIp(req: NextRequest): string | null {
