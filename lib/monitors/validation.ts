@@ -1,5 +1,5 @@
-import type { MonitorType } from "./db";
-import { isMaskedSecret } from "./monitor-fields";
+import type { MonitorType } from "../db";
+import { isMaskedSecret } from "./fields";
 
 const VALID_TYPES: MonitorType[] = ["http", "tcp", "ping"];
 const VALID_METHODS = [

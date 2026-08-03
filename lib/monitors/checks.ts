@@ -5,8 +5,8 @@ import { connect as tlsConnect, type PeerCertificate } from "node:tls";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import axios from "axios";
-import { decryptSecret } from "./secret-crypto";
-import type { Monitor, MonitorCheckResult } from "./db";
+import { decryptSecret } from "../secret-crypto";
+import type { Monitor, MonitorCheckResult } from "../db";
 
 const execFileAsync = promisify(execFile);
 

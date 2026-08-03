@@ -1,4 +1,4 @@
-import type { Monitor } from "./db";
+import type { Monitor } from "../db";
 
 export const MASKED_SECRET = "********************";
 

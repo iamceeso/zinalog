@@ -6,11 +6,11 @@ import {
   type Monitor,
   type MonitorCheckOutcome,
   type MonitorStatus,
-} from "./db";
-import { isIpAddress } from "./domain-utils";
-import { runMonitorCheck } from "./monitor-checks";
-import { sendAllNotifications } from "./notifications";
-import { getDomainInfo } from "./whois";
+} from "../db";
+import { isIpAddress } from "../domain-utils";
+import { runMonitorCheck } from "./checks";
+import { sendAllNotifications } from "../notifications";
+import { getDomainInfo } from "../whois";
 
 declare global {
   var __monitorSchedulerStarted: boolean | undefined;
