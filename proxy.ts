@@ -4,24 +4,21 @@ import { randomBytes } from "crypto";
 import { checkAdminRateLimit } from "@/lib/admin-rate-limit";
 import { checkCsrfProtection } from "@/lib/csrf";
 
-const ADMIN_MUTATION_PATHS = [
-  "/api/access-audit",
-  "/api/alerts",
-  "/api/keys",
-  "/api/settings",
-  "/api/users",
-  "/api/monitors",
-  "/api/auth/logout",
-  "/api/auth/change-password",
-  "/api/auth/mfa/verify",
-];
+// /api/logs is authenticated with a per-key API token (not the browser
+// session cookie) and is rate-limited separately per key in lib/auth.ts, so
+// it's exempt from CSRF checks and the generic admin-mutation rate limit.
+// Every other mutating /api/** route is protected by default: this list is
+// an explicit exclusion, not an allowlist, so a newly added route can't
+// silently skip CSRF/rate-limit protection the way it could before.
+const ADMIN_MUTATION_EXEMPT_PATHS = ["/api/logs"];
 
 const MUTATION_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 function isAdminMutation(request: NextRequest): boolean {
   const { pathname } = request.nextUrl;
   return (
     MUTATION_METHODS.has(request.method) &&
-    ADMIN_MUTATION_PATHS.some(
+    pathname.startsWith("/api/") &&
+    !ADMIN_MUTATION_EXEMPT_PATHS.some(
       (path) => pathname === path || pathname.startsWith(`${path}/`)
     )
   );
