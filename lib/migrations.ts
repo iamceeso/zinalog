@@ -1,5 +1,5 @@
-import { readdir, readFile } from "fs/promises";
-import { join } from "path";
+import { readdir, readFile, copyFile, mkdir } from "fs/promises";
+import { basename, dirname, join } from "path";
 import type { Database as SqliteDatabase } from "sqlite";
 
 export interface Migration {
@@ -123,6 +123,33 @@ export async function getMigrationStatuses(
   }));
 }
 
+// Create a backup before applying pending migrations. Returns null for
+// in-memory or anonymous databases, which have nothing to back up.
+async function backupDatabaseFile(
+  database: SqliteDatabase
+): Promise<string | null> {
+  const dbFilename = database.config.filename;
+  if (!dbFilename || dbFilename === ":memory:") {
+    return null;
+  }
+
+  // Flush WAL contents into the main file so the copy below is a complete,
+  // self-contained snapshot that doesn't need companion -wal/-shm files.
+  await database.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+
+  const backupDir = join(dirname(dbFilename), "backups");
+  await mkdir(backupDir, { recursive: true });
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = join(
+    backupDir,
+    `${basename(dbFilename)}.pre-migrate-${stamp}.bak`
+  );
+  await copyFile(dbFilename, backupPath);
+
+  return backupPath;
+}
+
 export async function runPendingMigrations(
   database: SqliteDatabase
 ): Promise<Migration[]> {
@@ -130,6 +157,16 @@ export async function runPendingMigrations(
 
   const statuses = await getMigrationStatuses(database);
   const pending = statuses.filter((migration) => migration.appliedAt === null);
+
+  if (pending.length > 0) {
+    const backupPath = await backupDatabaseFile(database);
+    if (backupPath) {
+      console.log(
+        `[migrations] Backed up database to ${backupPath} before applying ` +
+          `${pending.length} pending migration(s).`
+      );
+    }
+  }
 
   for (const migration of pending) {
     await database.exec("BEGIN IMMEDIATE");

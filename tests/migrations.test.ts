@@ -37,6 +37,15 @@ async function openTempDb(): Promise<SqliteDatabase> {
   return open({ filename: ":memory:", driver: sqlite3.Database });
 }
 
+async function openTempFileDb(tempDir: string): Promise<SqliteDatabase> {
+  const db = await open({
+    filename: path.join(tempDir, "logs.db"),
+    driver: sqlite3.Database,
+  });
+  await db.exec("PRAGMA journal_mode = WAL");
+  return db;
+}
+
 async function writeMigration(
   tempDir: string,
   filename: string,
@@ -230,6 +239,49 @@ test("runPendingMigrations applies pending migrations, skips empty up sections, 
       // Running again should find nothing pending.
       const secondRun = await migrations.runPendingMigrations(db);
       assert.equal(secondRun.length, 0);
+    } finally {
+      await db.close();
+    }
+  });
+});
+
+test("runPendingMigrations backs up a file-backed database before applying pending migrations", async () => {
+  await withTempCwd(async (tempDir) => {
+    await writeMigration(
+      tempDir,
+      "20260101000000_creates_table.sql",
+      "-- migrate:up\nCREATE TABLE widgets (id INTEGER);\n-- migrate:down\nDROP TABLE widgets;\n"
+    );
+
+    const migrations = loadMigrationsModule();
+    const db = await openTempFileDb(tempDir);
+    try {
+      await migrations.runPendingMigrations(db);
+
+      const backupDir = path.join(tempDir, "backups");
+      const backupFiles = await fs.readdir(backupDir);
+      assert.equal(backupFiles.length, 1);
+      assert.match(backupFiles[0], /^logs\.db\.pre-migrate-.+\.bak$/);
+
+      // The backup was taken before the migration ran, so it must not
+      // contain the table the migration goes on to create.
+      const backupDb = await open({
+        filename: path.join(backupDir, backupFiles[0]),
+        driver: sqlite3.Database,
+      });
+      try {
+        const tables = await backupDb.all<{ name: string }[]>(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'widgets'"
+        );
+        assert.equal(tables.length, 0);
+      } finally {
+        await backupDb.close();
+      }
+
+      // No pending migrations left, so a second run must not create
+      // another backup.
+      await migrations.runPendingMigrations(db);
+      assert.deepEqual(await fs.readdir(backupDir), backupFiles);
     } finally {
       await db.close();
     }
