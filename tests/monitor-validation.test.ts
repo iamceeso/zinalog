@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateMonitorPayload } from "../lib/monitor-validation";
-import { MASKED_SECRET } from "../lib/monitor-fields";
+import { validateMonitorPayload } from "../lib/monitors/validation";
+import { MASKED_SECRET } from "../lib/monitors/fields";
 
 function baseHttp(overrides: Record<string, unknown> = {}) {
   return {

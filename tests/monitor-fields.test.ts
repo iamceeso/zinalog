@@ -5,7 +5,7 @@ import {
   isMaskedSecret,
   monitorUniqueConstraintField,
   sanitizeMonitorForClient,
-} from "../lib/monitor-fields";
+} from "../lib/monitors/fields";
 import type { Monitor } from "../lib/db";
 
 function baseMonitor(overrides: Partial<Monitor> = {}): Monitor {

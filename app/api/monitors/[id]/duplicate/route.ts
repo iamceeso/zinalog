@@ -3,7 +3,7 @@ import { createMonitor, getMonitorById, listMonitors } from "@/lib/db";
 import {
   monitorUniqueConstraintField,
   sanitizeMonitorForClient,
-} from "@/lib/monitor-fields";
+} from "@/lib/monitors/fields";
 import { requireApiUser } from "@/lib/session-auth";
 import { decryptSecret } from "@/lib/secret-crypto";
 import type { MonitorType } from "@/lib/db";

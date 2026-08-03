@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMonitor, listMonitors } from "@/lib/db";
-import { ensureMonitorSchedulerStarted } from "@/lib/monitor-scheduler";
+import { ensureMonitorSchedulerStarted } from "@/lib/monitors/scheduler";
 import {
   monitorUniqueConstraintField,
   sanitizeMonitorForClient,
-} from "@/lib/monitor-fields";
-import { validateMonitorPayload } from "@/lib/monitor-validation";
+} from "@/lib/monitors/fields";
+import { validateMonitorPayload } from "@/lib/monitors/validation";
 import { requireApiUser } from "@/lib/session-auth";
 
 export async function GET() {

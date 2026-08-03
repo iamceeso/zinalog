@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMonitorById } from "@/lib/db";
-import { runAndRecordMonitorCheck } from "@/lib/monitor-scheduler";
+import { runAndRecordMonitorCheck } from "@/lib/monitors/scheduler";
 import { requireApiUser } from "@/lib/session-auth";
 
 export async function POST(

@@ -8,15 +8,15 @@ import type {
   MonitorCheckResult,
 } from "../lib/db";
 
-type SchedulerModule = typeof import("../lib/monitor-scheduler");
+type SchedulerModule = typeof import("../lib/monitors/scheduler");
 
 const cjsRequire = createRequire(__filename);
 const compiledDbPath = path.resolve(__dirname, "../lib/db.js");
 const compiledSchedulerPath = path.resolve(
   __dirname,
-  "../lib/monitor-scheduler.js"
+  "../lib/monitors/scheduler.js"
 );
-const compiledChecksPath = path.resolve(__dirname, "../lib/monitor-checks.js");
+const compiledChecksPath = path.resolve(__dirname, "../lib/monitors/checks.js");
 const compiledNotificationsPath = path.resolve(
   __dirname,
   "../lib/notifications.js"

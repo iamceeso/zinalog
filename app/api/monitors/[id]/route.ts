@@ -6,12 +6,12 @@ import {
   listMonitorChecks,
   updateMonitor,
 } from "@/lib/db";
-import { ensureMonitorSchedulerStarted } from "@/lib/monitor-scheduler";
+import { ensureMonitorSchedulerStarted } from "@/lib/monitors/scheduler";
 import {
   monitorUniqueConstraintField,
   sanitizeMonitorForClient,
-} from "@/lib/monitor-fields";
-import { validateMonitorPayload } from "@/lib/monitor-validation";
+} from "@/lib/monitors/fields";
+import { validateMonitorPayload } from "@/lib/monitors/validation";
 import { requireApiUser } from "@/lib/session-auth";
 
 function parseId(id: string): number | null {

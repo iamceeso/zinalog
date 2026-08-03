@@ -18,7 +18,7 @@ import {
   runMonitorCheck,
   type TcpSocketLike,
   type TlsSocketLike,
-} from "../lib/monitor-checks";
+} from "../lib/monitors/checks";
 import type { Monitor, MonitorType } from "../lib/db";
 
 let certDir: string;
