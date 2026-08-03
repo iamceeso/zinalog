@@ -9,5 +9,10 @@ services:
       HOSTNAME: "0.0.0.0"
       DATABASE_PATH: /data/logs.db
       TRUST_PROXY: "false"
+      # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      # Set it in a .env file next to this compose file (or your shell
+      # environment) to encrypt SMTP/webhook secrets at rest. Left unset,
+      # they're stored in plain text with a startup warning.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     volumes:
       - ./data:/data
