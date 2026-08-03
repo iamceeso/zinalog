@@ -12,6 +12,24 @@ import { requireApiUser } from "@/lib/session-auth";
 
 const VALID_LEVELS = ["info", "warning", "error", "debug"];
 
+// Row-count trimming in lib/db/logs.ts only bounds the *number* of stored
+// rows, not their size, so a single oversized log can still bloat the
+// SQLite file arbitrarily. These caps bound each field's storage footprint.
+const MAX_MESSAGE_BYTES = 32_000;
+const MAX_STACK_BYTES = 64_000;
+const MAX_METADATA_BYTES = 64_000;
+const MAX_SERVICE_BYTES = 200;
+// Rough ceiling on the whole request body, checked against Content-Length
+// before the body is parsed. It's a cheap first line of defense only --
+// Content-Length can be absent (chunked encoding) or wrong, so the
+// per-field byte caps below are the real enforcement.
+const MAX_BODY_BYTES =
+  MAX_MESSAGE_BYTES + MAX_STACK_BYTES + MAX_METADATA_BYTES + 8_192;
+
+function exceedsByteLength(value: string, maxBytes: number): boolean {
+  return Buffer.byteLength(value, "utf8") > maxBytes;
+}
+
 function parsePositiveIntegerParam(
   value: string | null,
   fallback: number,
@@ -53,6 +71,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const contentLength = Number(req.headers.get("content-length") ?? "");
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json(
+      { error: `Request body too large. Max ${MAX_BODY_BYTES} bytes` },
+      { status: 413, headers: CORS_HEADERS }
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -77,6 +103,45 @@ export async function POST(req: NextRequest) {
       { status: 400, headers: CORS_HEADERS }
     );
   }
+  if (exceedsByteLength(message, MAX_MESSAGE_BYTES)) {
+    return NextResponse.json(
+      {
+        error: `Field 'message' exceeds maximum size of ${MAX_MESSAGE_BYTES} bytes`,
+      },
+      { status: 400, headers: CORS_HEADERS }
+    );
+  }
+
+  if (typeof stack === "string" && exceedsByteLength(stack, MAX_STACK_BYTES)) {
+    return NextResponse.json(
+      {
+        error: `Field 'stack' exceeds maximum size of ${MAX_STACK_BYTES} bytes`,
+      },
+      { status: 400, headers: CORS_HEADERS }
+    );
+  }
+
+  if (
+    typeof service === "string" &&
+    exceedsByteLength(service, MAX_SERVICE_BYTES)
+  ) {
+    return NextResponse.json(
+      {
+        error: `Field 'service' exceeds maximum size of ${MAX_SERVICE_BYTES} bytes`,
+      },
+      { status: 400, headers: CORS_HEADERS }
+    );
+  }
+
+  const metadataJson = metadata !== undefined ? JSON.stringify(metadata) : null;
+  if (metadataJson && exceedsByteLength(metadataJson, MAX_METADATA_BYTES)) {
+    return NextResponse.json(
+      {
+        error: `Field 'metadata' exceeds maximum size of ${MAX_METADATA_BYTES} bytes`,
+      },
+      { status: 400, headers: CORS_HEADERS }
+    );
+  }
 
   const normalizedLevel = (level ?? "info").toLowerCase();
   if (!VALID_LEVELS.includes(normalizedLevel)) {
@@ -95,7 +160,7 @@ export async function POST(req: NextRequest) {
     message,
     service: effectiveService ?? null,
     stack: typeof stack === "string" ? stack : null,
-    metadata: metadata !== undefined ? JSON.stringify(metadata) : null,
+    metadata: metadataJson,
     api_key_id: auth.apiKey?.id ?? null,
   });
 
@@ -105,7 +170,7 @@ export async function POST(req: NextRequest) {
     message,
     service: effectiveService ?? null,
     stack: typeof stack === "string" ? stack : null,
-    metadata: metadata !== undefined ? JSON.stringify(metadata) : null,
+    metadata: metadataJson,
     created_at: new Date().toISOString(),
   });
 
