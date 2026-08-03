@@ -21,10 +21,20 @@ const compiledSecretCryptoPath = path.resolve(
   "../lib/secret-crypto.js"
 );
 
+const compiledDbSubmodulePaths = [
+  "core",
+  "logs",
+  "api-keys",
+  "settings",
+  "users",
+  "monitors",
+].map((name) => path.resolve(__dirname, `../lib/db/${name}.js`));
+
 const cjsRequire = createRequire(__filename);
 const TEST_ENCRYPTION_KEY = "c".repeat(64);
 const ALL_COMPILED_PATHS = [
   compiledDbPath,
+  ...compiledDbSubmodulePaths,
   compiledNotificationsPath,
   compiledEmailPath,
   compiledSecretCryptoPath,
