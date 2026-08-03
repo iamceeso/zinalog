@@ -264,6 +264,20 @@ export default function Sidebar({
     };
   }, [drawerOpen]);
 
+  // If this page is restored from the browser's back/forward cache (e.g.
+  // navigating back after signing out), re-validate with the server instead
+  // of showing the stale cached view — requireUser() will redirect to
+  // /login if the session is no longer valid.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        router.refresh();
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [router]);
+
   useEffect(() => {
     if (
       !pathname?.startsWith("/dashboard") ||
