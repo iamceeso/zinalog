@@ -8,6 +8,7 @@ import { open } from "sqlite";
 const DB_PATH =
   process.env.DATABASE_PATH || path.join(process.cwd(), "data", "logs.db");
 const MIGRATIONS_DIR = path.join(process.cwd(), "migrations");
+const BACKUPS_DIR = path.join(path.dirname(DB_PATH), "backups");
 
 function printUsage() {
   console.log(`Usage:
@@ -16,6 +17,7 @@ function printUsage() {
   npm run zina:migrate:down -- [steps]
   npm run zina:migrate:drop
   npm run zina:migrate:status
+  npm run zina:migrate:restore -- [backup-filename]
 `);
 }
 
@@ -271,6 +273,88 @@ async function status() {
   }
 }
 
+async function listBackups() {
+  let entries;
+  try {
+    entries = await fs.readdir(BACKUPS_DIR);
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+
+  return entries
+    .filter((entry) => entry.endsWith(".bak"))
+    .sort()
+    .reverse();
+}
+
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function restore(args) {
+  const backups = await listBackups();
+
+  if (args.length === 0) {
+    if (backups.length === 0) {
+      console.log(`No backups found in ${BACKUPS_DIR}`);
+      return;
+    }
+
+    console.log("Available backups (most recent first):");
+    for (const name of backups) {
+      console.log(`  ${name}`);
+    }
+    console.log(
+      `\nRestore one with:\n  npm run zina:migrate:restore -- ${backups[0]}`
+    );
+    return;
+  }
+
+  const requested = args[0];
+  const backupPath = path.isAbsolute(requested)
+    ? requested
+    : path.join(BACKUPS_DIR, requested);
+
+  if (!(await fileExists(backupPath))) {
+    throw new Error(`Backup file not found: ${backupPath}`);
+  }
+
+  // Stop is on the operator: this overwrites the live database file, so it
+  // should only be run while the app is not running against DB_PATH.
+  if (await fileExists(DB_PATH)) {
+    await fs.mkdir(BACKUPS_DIR, { recursive: true });
+    const preRestorePath = path.join(
+      BACKUPS_DIR,
+      `${path.basename(DB_PATH)}.pre-restore-${timestamp()}.bak`
+    );
+    await fs.copyFile(DB_PATH, preRestorePath);
+    console.log(
+      `Backed up the current database to ${preRestorePath} before restoring.`
+    );
+  }
+
+  await fs.copyFile(backupPath, DB_PATH);
+
+  // Drop any stale WAL/SHM files so SQLite doesn't try to replay old WAL
+  // frames against the restored file on next open.
+  for (const suffix of ["-wal", "-shm"]) {
+    await fs.rm(`${DB_PATH}${suffix}`, { force: true });
+  }
+
+  console.log(`Restored ${DB_PATH} from ${backupPath}.`);
+  console.log(
+    "Restart the app for the restored database to take effect. Note: any " +
+      "migrations applied after this backup was taken will run again on " +
+      "the next startup, since the restored file predates them."
+  );
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
 
@@ -289,6 +373,9 @@ async function main() {
       break;
     case "status":
       await status();
+      break;
+    case "restore":
+      await restore(args);
       break;
     default:
       printUsage();

@@ -15,7 +15,8 @@
     "zina:migrate": "node scripts/zina-migrate.mjs up",
     "zina:migrate:down": "node scripts/zina-migrate.mjs down",
     "zina:migrate:drop": "node scripts/zina-migrate.mjs drop",
-    "zina:migrate:status": "node scripts/zina-migrate.mjs status"
+    "zina:migrate:status": "node scripts/zina-migrate.mjs status",
+    "zina:migrate:restore": "node scripts/zina-migrate.mjs restore"
   },
   "dependencies": {
     "axios": "^1.19.0",
