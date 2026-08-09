@@ -395,6 +395,45 @@ test("runDueChecks processes due monitors in batches and logs per-monitor failur
   );
 });
 
+test("runDueChecks probes monitors concurrently but serializes result recording", async () => {
+  const monitors = [
+    baseMonitor({ id: 1 }),
+    baseMonitor({ id: 2 }),
+    baseMonitor({ id: 3 }),
+  ];
+  let activeRecordings = 0;
+  let maxActiveRecordings = 0;
+  let completedProbes = 0;
+  const recordedIds: number[] = [];
+
+  const { scheduler } = loadSchedulerWithMocks({
+    due: monitors,
+    runMonitorCheck: async () => {
+      completedProbes += 1;
+      return { status: "up" };
+    },
+    recordMonitorCheck: async (monitor, result) => {
+      assert.equal(completedProbes, monitors.length);
+      activeRecordings += 1;
+      maxActiveRecordings = Math.max(maxActiveRecordings, activeRecordings);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      activeRecordings -= 1;
+      recordedIds.push(monitor.id);
+      return {
+        previousStatus: "pending",
+        newStatus: result.status,
+        statusChanged: true,
+        check: result,
+      };
+    },
+  });
+
+  await scheduler.runDueChecks();
+
+  assert.equal(maxActiveRecordings, 1);
+  assert.deepEqual(recordedIds, [1, 2, 3]);
+});
+
 test("extractHostname returns raw non-http targets, parsed http hostnames, and null for invalid URLs", () => {
   const { scheduler } = loadSchedulerWithMocks({});
 

@@ -44,6 +44,13 @@ export async function runAndRecordMonitorCheck(
   monitor: Monitor
 ): Promise<MonitorCheckOutcome> {
   const result = await runMonitorCheck(monitor);
+  return recordMonitorCheckResult(monitor, result);
+}
+
+async function recordMonitorCheckResult(
+  monitor: Monitor,
+  result: Awaited<ReturnType<typeof runMonitorCheck>>
+): Promise<MonitorCheckOutcome> {
   const outcome = await recordMonitorCheck(monitor, result);
 
   if (
@@ -83,16 +90,34 @@ export async function runDueChecks(): Promise<void> {
 
   for (let i = 0; i < due.length; i += MAX_CONCURRENT_CHECKS) {
     const batch = due.slice(i, i + MAX_CONCURRENT_CHECKS);
-    await Promise.all(
-      batch.map((monitor) =>
-        runAndRecordMonitorCheck(monitor).catch((err) =>
+    const completedChecks = await Promise.all(
+      batch.map(async (monitor) => {
+        try {
+          return { monitor, result: await runMonitorCheck(monitor) };
+        } catch (err) {
           console.error(
             `[monitor-scheduler] check failed for monitor ${monitor.id}`,
             err
-          )
-        )
-      )
+          );
+          return null;
+        }
+      })
     );
+
+    // Network probes can run in parallel, but monitor result persistence uses
+    // a shared SQLite connection. Serialize transactions to avoid overlapping
+    // BEGIN statements on that connection.
+    for (const completed of completedChecks) {
+      if (!completed) continue;
+      try {
+        await recordMonitorCheckResult(completed.monitor, completed.result);
+      } catch (err) {
+        console.error(
+          `[monitor-scheduler] check failed for monitor ${completed.monitor.id}`,
+          err
+        );
+      }
+    }
   }
 }
 
