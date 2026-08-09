@@ -335,6 +335,26 @@ export async function recordMonitorCheck(
       [monitor.id, monitor.id, MONITOR_CHECKS_PER_MONITOR_LIMIT]
     );
 
+    // Rolled up separately from monitor_checks so weekly/monthly/yearly
+    // uptime stays accurate regardless of the row cap above.
+    await database.run(
+      `INSERT INTO monitor_daily_stats (
+         monitor_id, day, total_checks, up_checks, response_time_sum_ms, response_time_count
+       ) VALUES (?, date('now'), ?, ?, ?, ?)
+       ON CONFLICT(monitor_id, day) DO UPDATE SET
+         total_checks = total_checks + excluded.total_checks,
+         up_checks = up_checks + excluded.up_checks,
+         response_time_sum_ms = response_time_sum_ms + excluded.response_time_sum_ms,
+         response_time_count = response_time_count + excluded.response_time_count`,
+      [
+        monitor.id,
+        result.status === "blocked" ? 0 : 1,
+        result.status === "up" ? 1 : 0,
+        result.status === "up" ? (result.response_time_ms ?? 0) : 0,
+        result.status === "up" && result.response_time_ms != null ? 1 : 0,
+      ]
+    );
+
     await database.run(
       `UPDATE monitors SET ${updateFields.join(", ")} WHERE id = ?`,
       updateParams
@@ -404,6 +424,61 @@ export async function getMonitorUptimeStats(
   return {
     uptimePercent: total > 0 ? Math.round((row!.up / total) * 1000) / 10 : null,
     avgResponseMs: row?.avg_ms != null ? Math.round(row.avg_ms) : null,
+    totalChecks: total,
+  };
+}
+
+export type MonitorStatsPeriod = "week" | "month" | "year";
+
+const PERIOD_DAYS: Record<MonitorStatsPeriod, number> = {
+  week: 7,
+  month: 30,
+  year: 365,
+};
+
+export interface MonitorPeriodStats {
+  uptimePercent: number | null;
+  avgResponseMs: number | null;
+  totalChecks: number;
+}
+
+// Reads from the never-pruned monitor_daily_stats rollup rather than
+// monitor_checks, so it stays accurate no matter how tight the raw-check cap is.
+export async function getMonitorUptimeStatsByPeriod(
+  monitorId: number,
+  period: MonitorStatsPeriod
+): Promise<MonitorPeriodStats> {
+  const database = await getDb();
+  const row = (await database.get<{
+    total: number | null;
+    up: number | null;
+    resp_sum: number | null;
+    resp_count: number | null;
+  }>(
+    `SELECT
+       SUM(total_checks) as total,
+       SUM(up_checks) as up,
+       SUM(response_time_sum_ms) as resp_sum,
+       SUM(response_time_count) as resp_count
+     FROM monitor_daily_stats
+     WHERE monitor_id = ? AND day >= date('now', '-' || ? || ' days')`,
+    [monitorId, PERIOD_DAYS[period]]
+  )) as
+    | {
+        total: number | null;
+        up: number | null;
+        resp_sum: number | null;
+        resp_count: number | null;
+      }
+    | undefined;
+
+  const total = row?.total ?? 0;
+  const respCount = row?.resp_count ?? 0;
+  return {
+    uptimePercent:
+      total > 0 ? Math.round(((row?.up ?? 0) / total) * 1000) / 10 : null,
+    avgResponseMs:
+      respCount > 0 ? Math.round((row?.resp_sum ?? 0) / respCount) : null,
     totalChecks: total,
   };
 }

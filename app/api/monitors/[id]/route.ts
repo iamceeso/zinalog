@@ -3,6 +3,7 @@ import {
   deleteMonitor,
   getMonitorById,
   getMonitorUptimeStats,
+  getMonitorUptimeStatsByPeriod,
   listMonitorChecks,
   updateMonitor,
 } from "@/lib/db";
@@ -39,14 +40,21 @@ export async function GET(
     return NextResponse.json({ error: "Monitor not found" }, { status: 404 });
   }
 
-  const [stats24h, recentChecks] = await Promise.all([
-    getMonitorUptimeStats(monitorId, 24),
-    listMonitorChecks(monitorId, 100),
-  ]);
+  const [stats24h, stats7d, stats30d, stats365d, recentChecks] =
+    await Promise.all([
+      getMonitorUptimeStats(monitorId, 24),
+      getMonitorUptimeStatsByPeriod(monitorId, "week"),
+      getMonitorUptimeStatsByPeriod(monitorId, "month"),
+      getMonitorUptimeStatsByPeriod(monitorId, "year"),
+      listMonitorChecks(monitorId, 100),
+    ]);
 
   return NextResponse.json({
     monitor: sanitizeMonitorForClient(monitor),
     stats24h,
+    stats7d,
+    stats30d,
+    stats365d,
     recentChecks,
   });
 }

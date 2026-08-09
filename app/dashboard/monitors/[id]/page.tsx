@@ -68,6 +68,9 @@ export default function MonitorDetailPage() {
 
   const [monitor, setMonitor] = useState<ClientMonitor | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [stats7d, setStats7d] = useState<Stats | null>(null);
+  const [stats30d, setStats30d] = useState<Stats | null>(null);
+  const [stats365d, setStats365d] = useState<Stats | null>(null);
   const [checks, setChecks] = useState<ClientMonitorCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -81,10 +84,16 @@ export default function MonitorDetailPage() {
     (data: {
       monitor: ClientMonitor;
       stats24h: Stats;
+      stats7d: Stats;
+      stats30d: Stats;
+      stats365d: Stats;
       recentChecks: ClientMonitorCheck[];
     }) => {
       setMonitor(data.monitor);
       setStats(data.stats24h);
+      setStats7d(data.stats7d);
+      setStats30d(data.stats30d);
+      setStats365d(data.stats365d);
       setChecks(data.recentChecks ?? []);
       setLoading(false);
     },
@@ -259,6 +268,39 @@ export default function MonitorDetailPage() {
             title="Uptime (24h)"
             value={
               stats?.uptimePercent != null ? `${stats.uptimePercent}%` : "-"
+            }
+            accent="info"
+          />
+        </div>
+        <div className="flex-1 min-w-40">
+          <StatCard
+            title="Uptime (7d)"
+            value={
+              stats7d?.uptimePercent != null
+                ? `${stats7d.uptimePercent}%`
+                : "-"
+            }
+            accent="info"
+          />
+        </div>
+        <div className="flex-1 min-w-40">
+          <StatCard
+            title="Uptime (30d)"
+            value={
+              stats30d?.uptimePercent != null
+                ? `${stats30d.uptimePercent}%`
+                : "-"
+            }
+            accent="info"
+          />
+        </div>
+        <div className="flex-1 min-w-40">
+          <StatCard
+            title="Uptime (365d)"
+            value={
+              stats365d?.uptimePercent != null
+                ? `${stats365d.uptimePercent}%`
+                : "-"
             }
             accent="info"
           />
