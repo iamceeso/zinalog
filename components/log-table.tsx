@@ -625,7 +625,7 @@ export default function LogTable({
         <span className="text-[12px] text-(--text-dim) shrink-0">
           {total === 0
             ? "No logs"
-            : `Showing ${((page - 1) * limit + 1).toLocaleString()}–${Math.min(page * limit, total).toLocaleString()} of ${total.toLocaleString()} log${total !== 1 ? "s" : ""}`}
+            : `Showing ${((page - 1) * limit + 1).toLocaleString()}-${Math.min(page * limit, total).toLocaleString()} of ${total.toLocaleString()} log${total !== 1 ? "s" : ""}`}
         </span>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">

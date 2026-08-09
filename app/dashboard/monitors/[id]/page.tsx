@@ -412,7 +412,7 @@ export default function MonitorDetailPage() {
           <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3 border-t border-(--border)">
             <div className="flex items-center gap-2 text-[12px] text-(--text-dim)">
               <span>
-                Showing {(checksPageClamped - 1) * checksPageSize + 1}–
+                Showing {(checksPageClamped - 1) * checksPageSize + 1}-
                 {Math.min(checksPageClamped * checksPageSize, checks.length)} of{" "}
                 {checks.length}
               </span>
@@ -424,7 +424,7 @@ export default function MonitorDetailPage() {
                 }}
                 className="bg-(--bg-surface) border border-(--border) rounded-md px-2 py-1 text-[12px] text-(--text-muted) outline-none cursor-pointer"
               >
-                {[10, 25, 50, 100].map((n) => (
+                {[10, 25, 50].map((n) => (
                   <option key={n} value={n}>
                     {n} / page
                   </option>
