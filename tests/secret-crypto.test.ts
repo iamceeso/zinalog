@@ -1,8 +1,30 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decryptSecret, encryptSecret } from "../lib/secret-crypto";
+import {
+  decryptSecret,
+  encryptSecret,
+  isEncryptionKeyConfigured,
+} from "../lib/secret-crypto";
 
 const VALID_ENCRYPTION_KEY = "b".repeat(64);
+
+test("isEncryptionKeyConfigured reflects whether ENCRYPTION_KEY is set", () => {
+  const previousKey = process.env.ENCRYPTION_KEY;
+
+  try {
+    delete process.env.ENCRYPTION_KEY;
+    assert.equal(isEncryptionKeyConfigured(), false);
+
+    process.env.ENCRYPTION_KEY = VALID_ENCRYPTION_KEY;
+    assert.equal(isEncryptionKeyConfigured(), true);
+  } finally {
+    if (previousKey === undefined) {
+      delete process.env.ENCRYPTION_KEY;
+    } else {
+      process.env.ENCRYPTION_KEY = previousKey;
+    }
+  }
+});
 
 test("encryptSecret and decryptSecret round-trip when ENCRYPTION_KEY is set", () => {
   const previousKey = process.env.ENCRYPTION_KEY;

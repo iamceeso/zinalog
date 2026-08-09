@@ -342,6 +342,25 @@ test("checkHttp falls back to the default 200-299 range when expected_status has
   );
 });
 
+test("checkHttp ignores malformed expected-status entries before using the default range", async () => {
+  await withHttpServer(
+    (_req, res) => {
+      res.writeHead(404);
+      res.end();
+    },
+    async (port) => {
+      const result = await checkHttp(
+        baseMonitor({
+          target: `http://127.0.0.1:${port}/`,
+          expected_status: "not-a-status",
+        })
+      );
+      assert.equal(result.status, "down");
+      assert.equal(result.status_code, 404);
+    }
+  );
+});
+
 test("checkHttp sends decrypted custom headers and ignores malformed stored headers", async () => {
   await withHttpServer(
     (req, res) => {

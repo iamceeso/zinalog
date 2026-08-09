@@ -110,6 +110,18 @@ test("getDomainInfo returns null for IP address targets without querying WHOIS",
   assert.equal(calls, 0);
 });
 
+test("getDomainInfo returns null when no TLD can be derived", async () => {
+  let calls = 0;
+  const query = async () => {
+    calls += 1;
+    return null;
+  };
+
+  const result = await getDomainInfo("...", 1000, query);
+  assert.equal(result, null);
+  assert.equal(calls, 0);
+});
+
 test("getDomainInfo returns null when the IANA lookup itself fails", async () => {
   const query = async () => null;
   const result = await getDomainInfo("example.com", 1000, query);
