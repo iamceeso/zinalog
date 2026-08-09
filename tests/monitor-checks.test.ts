@@ -478,7 +478,7 @@ test("checkHttp reports down with a network error message when the connection is
 
 test("checkHttp reports a timeout error when the server never responds", async () => {
   await withHttpServer(
-    (_req, _res) => {
+    () => {
       // Never respond.
     },
     async (port) => {
@@ -774,7 +774,6 @@ test("checkPing reports a generic failure message for non-Error rejections", asy
   const result = await checkPing(
     baseMonitor({ type: "ping", target: "127.0.0.1" }),
     async () => {
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw "not an Error instance";
     }
   );
