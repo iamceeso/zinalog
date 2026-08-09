@@ -41,7 +41,9 @@ function createApiKey(overrides: Partial<ApiKey> = {}): ApiKey {
   };
 }
 
-function createRequest(input?: { headers?: Record<string, string> }): NextRequest {
+function createRequest(input?: {
+  headers?: Record<string, string>;
+}): NextRequest {
   return new NextRequest("http://localhost/api/logs", {
     headers: new Headers(input?.headers),
   });

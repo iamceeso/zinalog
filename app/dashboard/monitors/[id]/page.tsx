@@ -276,9 +276,7 @@ export default function MonitorDetailPage() {
           <StatCard
             title="Uptime (7d)"
             value={
-              stats7d?.uptimePercent != null
-                ? `${stats7d.uptimePercent}%`
-                : "-"
+              stats7d?.uptimePercent != null ? `${stats7d.uptimePercent}%` : "-"
             }
             accent="info"
           />
