@@ -65,7 +65,7 @@ export interface MonitorCheckOutcome {
   check: MonitorCheckResult;
 }
 
-const MONITOR_CHECKS_PER_MONITOR_LIMIT = 2000;
+const MONITOR_CHECKS_PER_MONITOR_LIMIT = 50;
 
 export interface MonitorListItem extends Monitor {
   last_response_time_ms: number | null;
