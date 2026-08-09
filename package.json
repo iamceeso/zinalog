@@ -3,7 +3,7 @@
   "version": "0.2.2",
   "private": true,
   "scripts": {
-    "dev": "next dev --port ${PORT:-4000}",
+    "dev": "next dev --webpack --port ${PORT:-4000}",
     "build": "next build",
     "start": "next start --port ${PORT:-4000}",
     "format": "prettier --write .",
