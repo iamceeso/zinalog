@@ -160,9 +160,48 @@ export function ensureValidUsername(username: string): void {
 
 export function ensureValidEmail(email: string): string {
   const normalized = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+
+  if (normalized.length > 254) {
     throw new Error("A valid email address is required");
   }
+
+  const atIndex = normalized.indexOf("@");
+  if (
+    atIndex <= 0 ||
+    atIndex !== normalized.lastIndexOf("@") ||
+    atIndex === normalized.length - 1
+  ) {
+    throw new Error("A valid email address is required");
+  }
+
+  const localPart = normalized.slice(0, atIndex);
+  const domainPart = normalized.slice(atIndex + 1);
+  if (
+    localPart.length > 64 ||
+    domainPart.length === 0 ||
+    domainPart.startsWith(".") ||
+    domainPart.endsWith(".") ||
+    !domainPart.includes(".")
+  ) {
+    throw new Error("A valid email address is required");
+  }
+
+  for (const char of normalized) {
+    if (char === " " || char === "\t" || char === "\n" || char === "\r") {
+      throw new Error("A valid email address is required");
+    }
+  }
+
+  for (const label of domainPart.split(".")) {
+    if (label.length === 0 || label.length > 63) {
+      throw new Error("A valid email address is required");
+    }
+  }
+
+  if (localPart.length === 0) {
+    throw new Error("A valid email address is required");
+  }
+
   return normalized;
 }
 
