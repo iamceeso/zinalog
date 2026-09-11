@@ -1,4 +1,10 @@
-import { randomBytes, createHash, scryptSync, timingSafeEqual } from "crypto";
+import {
+  randomBytes,
+  createHash,
+  randomInt,
+  scryptSync,
+  timingSafeEqual,
+} from "crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
@@ -206,7 +212,7 @@ export function ensureValidEmail(email: string): string {
 }
 
 function generateMfaCode(): string {
-  return String(randomBytes(4).readUInt32BE(0) % 1000000).padStart(6, "0");
+  return String(randomInt(1_000_000)).padStart(6, "0");
 }
 
 async function setSessionCookie(

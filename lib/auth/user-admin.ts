@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomInt } from "crypto";
 import {
   countAdmins,
   countActiveAdmins,
@@ -72,7 +72,7 @@ function normalizeManagedUserAllowedServices(
 }
 
 function pickRandomCharacter(source: string): string {
-  return source[randomBytes(1)[0] % source.length];
+  return source[randomInt(source.length)];
 }
 
 function generateTemporaryPassword(): string {
@@ -90,7 +90,7 @@ function generateTemporaryPassword(): string {
   ];
 
   for (let index = chars.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomBytes(1)[0] % (index + 1);
+    const swapIndex = randomInt(index + 1);
     [chars[index], chars[swapIndex]] = [chars[swapIndex], chars[index]];
   }
 
