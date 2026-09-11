@@ -286,6 +286,28 @@ test("runAndRecordMonitorCheck records a check and sends a status-change notific
   );
 });
 
+test("runAndRecordMonitorCheck writes null metadata for missing status details", async () => {
+  const checkResult: MonitorCheckResult = {
+    status: "up",
+    error: null,
+  };
+  const { scheduler, calls } = loadSchedulerWithMocks({ checkResult });
+
+  await scheduler.runAndRecordMonitorCheck(baseMonitor({ id: 8 }));
+
+  assert.equal(calls.notifications.length, 1);
+  assert.equal(
+    (calls.notifications[0] as { metadata: string }).metadata,
+    JSON.stringify({
+      monitor_id: 8,
+      type: "http",
+      target: "https://example.com/",
+      status_code: null,
+      response_time_ms: null,
+    })
+  );
+});
+
 test("runAndRecordMonitorCheck skips notification when the guard conditions are false", async () => {
   const noChange = loadSchedulerWithMocks({
     outcome: {
@@ -347,6 +369,31 @@ test("runAndRecordMonitorCheck logs rejected monitor notifications", async () =>
   assert.deepEqual(errors, [["[monitor-alert]", notificationError]]);
 });
 
+test("runAndRecordMonitorCheck attaches a notification rejection handler", async () => {
+  const notificationError = new Error("notification failed");
+  const errors: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
+
+  try {
+    const { scheduler } = loadSchedulerWithMocks({
+      sendAllNotifications: (() => ({
+        catch(listener: (err: Error) => void) {
+          listener(notificationError);
+        },
+      })) as unknown as (log: unknown) => Promise<unknown>,
+    });
+
+    await scheduler.runAndRecordMonitorCheck(baseMonitor());
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.deepEqual(errors, [["[monitor-alert]", notificationError]]);
+});
+
 test("runDueChecks returns when there are no due monitors", async () => {
   const { scheduler, calls } = loadSchedulerWithMocks({ due: [] });
 
@@ -393,6 +440,33 @@ test("runDueChecks processes due monitors in batches and logs per-monitor failur
         call[1] === checkError
     )
   );
+});
+
+test("runDueChecks logs recording failures after successful probes", async () => {
+  const monitor = baseMonitor({ id: 13 });
+  const recordError = new Error("record exploded");
+  const errors: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args);
+  };
+
+  try {
+    const { scheduler } = loadSchedulerWithMocks({
+      due: [monitor],
+      recordMonitorCheck: async () => {
+        throw recordError;
+      },
+    });
+
+    await scheduler.runDueChecks();
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.deepEqual(errors, [
+    [`[monitor-scheduler] check failed for monitor ${monitor.id}`, recordError],
+  ]);
 });
 
 test("runDueChecks probes monitors concurrently but serializes result recording", async () => {

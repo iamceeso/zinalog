@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import test from "node:test";
 import {
   getDomainInfo,
   rawWhoisQuery,
   type WhoisSocketLike,
 } from "../lib/whois";
+
+const cjsRequire = createRequire(__filename);
 
 //  rawWhoisQuery
 
@@ -94,6 +97,102 @@ test("rawWhoisQuery resolves null on timeout or error, ignoring late duplicate e
     () => fakeSocket
   );
   assert.equal(result, null);
+});
+
+test("rawWhoisQuery resolves null on socket errors", async () => {
+  const fakeSocket: WhoisSocketLike = {
+    setTimeout() {
+      return this;
+    },
+    write() {
+      return this;
+    },
+    on() {
+      return this;
+    },
+    once(event, listener) {
+      if (event === "error") {
+        setImmediate(() =>
+          (listener as (err: Error) => void)(new Error("boom"))
+        );
+      }
+      return this;
+    },
+    connect() {
+      return this;
+    },
+    destroy() {
+      return this;
+    },
+  };
+
+  const result = await rawWhoisQuery(
+    "whois.example.com",
+    "example.com",
+    1000,
+    () => fakeSocket
+  );
+
+  assert.equal(result, null);
+});
+
+test("rawWhoisQuery uses a real Socket by default", async () => {
+  const netModule = cjsRequire("node:net") as {
+    Socket: new (...args: unknown[]) => unknown;
+  };
+  const originalSocket = netModule.Socket;
+  const writes: string[] = [];
+  let closeListener: (() => void) | null = null;
+
+  class FakeSocket {
+    setTimeout() {
+      return this;
+    }
+
+    write(data: string) {
+      writes.push(data);
+      return this;
+    }
+
+    on() {
+      return this;
+    }
+
+    once(event: string, listener: (() => void) | ((err: Error) => void)) {
+      if (event === "close") {
+        closeListener = listener as () => void;
+      }
+      if (event === "connect") {
+        setImmediate(() => {
+          (listener as () => void)();
+          closeListener?.();
+        });
+      }
+      return this;
+    }
+
+    connect() {
+      return this;
+    }
+
+    destroy() {
+      return this;
+    }
+  }
+
+  try {
+    netModule.Socket = FakeSocket;
+    const result = await rawWhoisQuery(
+      "whois.example.com",
+      "example.com",
+      1000
+    );
+
+    assert.equal(result, null);
+    assert.deepEqual(writes, ["example.com\r\n"]);
+  } finally {
+    netModule.Socket = originalSocket;
+  }
 });
 
 //  getDomainInfo
