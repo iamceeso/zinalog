@@ -13,6 +13,7 @@ const landingFeatures = [
   "HTTP ingestion",
   "SQLite-backed",
   "Real-time dashboard",
+  "Uptime monitoring",
 ];
 
 export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
@@ -193,11 +194,12 @@ export default function AuthForm({ mode }: { mode: "login" | "setup" }) {
 
             <div className="animate-slide-up mt-5 rounded-2xl border border-(--border) bg-(--bg-surface) p-3 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
               <Image
-                src="/dashboard.png"
-                alt="ZinaLog dashboard overview"
-                width={1917}
-                height={887}
+                src="/dashboard2.png"
+                alt="ZinaLog monitor detail view with uptime stats and response time chart"
+                width={1896}
+                height={697}
                 priority
+                quality={95}
                 className="h-auto w-full rounded-xl border border-[rgba(255,255,255,0.05)]"
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 draggable={false}
